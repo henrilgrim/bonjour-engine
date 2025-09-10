@@ -41,7 +41,7 @@ export function PauseAlert() {
     const { correlationPause, reasons, approvalState } = useReasonStore();
     const { actualStateExtension } = useAppStore();
     const [elapsedTime, setElapsedTime] = useState(0);
-    const { sendBreakExceededNotification, sendBreakWarningNotification } = useCentralNotifications();
+    const { sendBreakExceededNotification, sendBreakWarningNotification } = useNotifications();
 
     useEffect(() => {
         const startPauseTime = correlationPause?.date_event ? Math.floor((Date.now() - new Date(correlationPause.date_event).getTime()) / 1000) : 0;

@@ -6,7 +6,7 @@ import { removePauseRequest } from "@/lib/firebase/realtime/pause/request";
 import { useAppStore } from "@/store/appStore";
 import { useAuthStore } from "@/store/authStore";
 import { upsertProfileRequest } from "@/lib/firebase/firestore/profiles";
-import { systemNotify } from "@/store/centralNotificationsStore";
+import { systemNotify } from "@/lib/notifications";
 
 export function usePauseControl() {
     const { toast } = useToast();

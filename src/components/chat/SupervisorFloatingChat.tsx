@@ -13,7 +13,7 @@ import {
     useFirebaseSupervisors,
 } from "@/hooks/use-firebase-supervisors";
 import { toDateSafe, formatDate } from "./utils";
-import { useCentralNotifications } from "@/store/centralNotificationsStore";
+import { useNotifications } from "@/lib/notifications";
 
 type Props = {
     open: boolean;

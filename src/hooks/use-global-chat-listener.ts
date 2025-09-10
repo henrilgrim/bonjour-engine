@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useAppStore } from "@/store/appStore";
 import { useFirebaseSupervisors } from "./use-firebase-supervisors";
-import { useCentralNotifications } from "@/store/centralNotificationsStore";
+import { useNotifications } from "@/lib/notifications";
 import { subscribeToAllMessagesForAgent_byEnumeratingChats } from "@/lib/firebase/firestore/chats";
 import type { ChatMessage } from "@/lib/firebase/firestore/chats/types";
 
@@ -21,7 +21,7 @@ export function useGlobalChatListener() {
     const accountcode = useAppStore((s) => s.company?.accountcode);
     const { supervisors } = useFirebaseSupervisors();
 
-    const { notifyIncoming } = useCentralNotifications();
+    const { notifyIncoming } = useNotifications();
 
     // Mensagens já processadas (evita duplicatas)
     const processedMessagesRef = useRef<Set<string>>(new Set());

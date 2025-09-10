@@ -13,7 +13,7 @@ import {
 } from "@/lib/firebase/realtime/pause/request";
 import { toMs } from "@/types/reason-store";
 import { upsertProfileRequest } from "@/lib/firebase/firestore/profiles";
-import { systemNotify } from "./centralNotificationsStore";
+import { systemNotify } from "@/lib/notifications";
 
 type PauseResponse<T> = { data: T | null; error: boolean; message: string };
 type ListenerStop = () => void;
@@ -627,14 +627,6 @@ export const useReasonStore = create<ReasonState>()(
                                         showEnterAnimation: true,
                                     });
 
-                                    systemNotify({
-                                        title: "Pausa aprovada",
-                                        message:
-                                            "Sua solicitação de pausa foi aprovada pelo supervisor.",
-                                        variant: "success",
-                                        type: "system",
-                                    });
-
                                     get().clearApprovalState();
                                     setTimeout(
                                         () =>
@@ -717,28 +709,11 @@ export const useReasonStore = create<ReasonState>()(
                                 }
 
                                 if (data.status === "rejected") {
-                                    console.log(
-                                        "Pausa rejeitada - processando notificação"
-                                    );
-                                    console.log("Dados da rejeição:", data);
+                                    console.log("Pausa rejeitada - limpando estado");
                                     get().stopApprovalListener();
                                     await removePauseRequest(
                                         company.accountcode,
                                         user.login
-                                    );
-
-                                    // Toast de reprovação
-                                    const notifResult = systemNotify({
-                                        title: "Pausa rejeitada ❌",
-                                        message:
-                                            data.rejectionReason ||
-                                            "Sua solicitação de pausa foi rejeitada pelo supervisor.",
-                                        variant: "error",
-                                        type: "system",
-                                    });
-                                    console.log(
-                                        "Resultado do systemNotify:",
-                                        notifResult
                                     );
                                     get().clearApprovalState();
                                     set({ open: true });

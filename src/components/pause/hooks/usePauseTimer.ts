@@ -1,8 +1,7 @@
 
 import { useEffect, useState } from "react"
 import { useReasonStore } from "@/store/reasonStore"
-import { useCentralNotifications } from "@/store/centralNotificationsStore"
-import { useNotificationsConfig } from "@/hooks/use-notifications-config"
+import { useNotifications } from "@/lib/notifications"
 import { formatTime } from "../utils"
 
 export function usePauseTimer() {
@@ -13,8 +12,7 @@ export function usePauseTimer() {
     const [hasPlayedWarningSound, setHasPlayedWarningSound] = useState(false)
     const [hasPlayedExceededSound, setHasPlayedExceededSound] = useState(false)
     
-    const { sendBreakExceededNotification, sendBreakWarningNotification } = useCentralNotifications()
-    const { playNotificationSound, isEnabled } = useNotificationsConfig()
+    const { sendBreakExceededNotification, sendBreakWarningNotification } = useNotifications()
 
     // Calcular tempo decorrido
     useEffect(() => {
@@ -64,12 +62,7 @@ export function usePauseTimer() {
             setShowTimeWarningAlert(true)
             setHasPlayedWarningSound(true)
 
-            // Som de aviso
-            if (isEnabled('pause')) {
-                playNotificationSound('warning')
-            }
-
-            // Notificação PWA
+            // Notificação PWA + Som
             const timeRemaining = formatTime(pauseDuration - elapsedTime)
             sendBreakWarningNotification(currentPauseReason, timeRemaining)
         }
@@ -82,12 +75,7 @@ export function usePauseTimer() {
             setShowTimeWarningAlert(false)
             setHasPlayedExceededSound(true)
 
-            // Som de tempo excedido
-            if (isEnabled('pause')) {
-                playNotificationSound('breakExceeded')
-            }
-
-            // Notificação PWA
+            // Notificação PWA + Som
             const timeExceededByFormatted = formatTime(elapsedTime - pauseDuration)
             sendBreakExceededNotification(currentPauseReason, timeExceededByFormatted)
         }
@@ -97,8 +85,6 @@ export function usePauseTimer() {
         currentPauseReason, 
         hasPlayedWarningSound, 
         hasPlayedExceededSound,
-        isEnabled,
-        playNotificationSound,
         sendBreakExceededNotification, 
         sendBreakWarningNotification
     ])

@@ -15,7 +15,7 @@ import { useTotalUnreadCount } from "@/hooks/use-total-unread-count";
 import { useTableStore } from "@/store/tableStore";
 import { useReasonStore } from "@/store/reasonStore";
 import { useCoreStore } from "@/store/coreStore";
-import { useCentralNotifications } from "@/store/centralNotificationsStore";
+import { useNotifications } from "@/lib/notifications";
 
 import { SupervisorFloatingChat } from "@/components/chat/SupervisorFloatingChat";
 
@@ -32,8 +32,8 @@ export default function HomePage() {
     const { reasons: allReasonsMetadata } = useReasonStore();
     const { totalUnread } = useTotalUnreadCount();
 
-    // Initialize central notifications
-    useCentralNotifications();
+    // Initialize notifications
+    useNotifications();
 
     // Função para abrir chat com supervisor específico
     const openChatWithSupervisor = useCallback((supervisorId: string) => {
