@@ -92,7 +92,27 @@ export default function CardAgent({
         return v && v > 0 ? v : 0;
     }, [messageCount, computedUnread, dialogChatOpen]);
 
-    const duration = useDurationFrom(ag.dataevento);
+    // Calcular duration corretamente baseado no status
+    const durationTimestamp = useMemo(() => {
+        // Se o agente está em pausa e há uma solicitação aprovada, usar timestamp da aprovação
+        if (ag.status === "Em pausa" && pauseRequest && pauseRequest.status === "approved" && pauseRequest.respondedAt) {
+            // Converter timestamp para Date
+            if (typeof pauseRequest.respondedAt === "number") {
+                return new Date(pauseRequest.respondedAt);
+            } else if (pauseRequest.respondedAt && typeof pauseRequest.respondedAt === "object" && "seconds" in pauseRequest.respondedAt) {
+                // Firestore Timestamp
+                return new Date((pauseRequest.respondedAt as any).seconds * 1000);
+            }
+        }
+        // Se o agente está em pausa mas não há dados de solicitação, usar dataevento
+        if (ag.status === "Em pausa") {
+            return ag.dataevento;
+        }
+        // Para outros status, usar dataevento normalmente
+        return ag.dataevento;
+    }, [ag.status, ag.dataevento, pauseRequest]);
+
+    const duration = useDurationFrom(durationTimestamp);
 
     const handleCardClick = () => {
         if (!ag.isLoggedInPanel) return;
