@@ -7,7 +7,6 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/Login";
 import HomePage from "./pages/Home";
-import AgentSelection from "./pages/AgentSelection";
 import SettingsPage from "./pages/Settings";
 import AuthGuard from "./components/auth/AuthGuard";
 import DevToolsProtection from "./config/devtools-protection";
@@ -57,14 +56,6 @@ export default function App() {
                                     element={
                                         <AuthGuard requireAuth={true}>
                                             <HomePage />
-                                        </AuthGuard>
-                                    }
-                                />
-                                <Route
-                                    path="/agent-selection"
-                                    element={
-                                        <AuthGuard requireAuth={true}>
-                                            <AgentSelection />
                                         </AuthGuard>
                                     }
                                 />

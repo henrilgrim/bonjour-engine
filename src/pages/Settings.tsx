@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSelectedAgentsStore } from "@/store/selectedAgentsStore";
+import { useFirebaseAgentSelection } from "@/hooks/use-firebase-agent-selection";
 import { useRealtimeAgents } from "@/hooks/use-realtime-agents";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, Trash2, Plus } from "lucide-react";
+import { Users, Trash2, Plus, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function SettingsPage() {
@@ -30,11 +30,12 @@ export default function SettingsPage() {
     const { orderedAgents } = useRealtimeAgents();
     const {
         selectedAgents,
-        clearSelection,
+        clearAgents,
         removeAgent,
         hasSelection,
         toggleAgent,
-    } = useSelectedAgentsStore();
+        saving,
+    } = useFirebaseAgentSelection();
 
     // Settings state
     const [notifications, setNotifications] = useState(true);
@@ -45,21 +46,20 @@ export default function SettingsPage() {
     // Modal state
     const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
 
-    const handleRemoveAgent = (agentId: string) => {
-        removeAgent(agentId);
-        toast({
-            title: "Agente removido",
-            description: "O agente foi removido da lista de monitoramento",
-        });
+    const handleRemoveAgent = async (agentId: string) => {
+        try {
+            await removeAgent(agentId);
+        } catch (error) {
+            // Error handling is done in the hook
+        }
     };
 
-    const handleClearAll = () => {
-        clearSelection();
-        toast({
-            title: "Lista limpa",
-            description:
-                "Todos os agentes foram removidos da lista de monitoramento",
-        });
+    const handleClearAll = async () => {
+        try {
+            await clearAgents();
+        } catch (error) {
+            // Error handling is done in the hook
+        }
     };
 
     const handleAddAgents = () => {
@@ -68,8 +68,15 @@ export default function SettingsPage() {
 
     return (
         <div>
-            <Tabs defaultValue="agents" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-4">
+            <Tabs defaultValue="general" className="space-y-6">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger
+                        value="general"
+                        className="flex items-center gap-2"
+                    >
+                        <SettingsIcon className="w-4 h-4" />
+                        Geral
+                    </TabsTrigger>
                     <TabsTrigger
                         value="agents"
                         className="flex items-center gap-2"
@@ -78,6 +85,33 @@ export default function SettingsPage() {
                         Agentes
                     </TabsTrigger>
                 </TabsList>
+
+                {/* General Tab */}
+                <TabsContent value="general" className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Configurações Gerais</CardTitle>
+                            <CardDescription>
+                                Configure as preferências do sistema
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-medium">Notificações</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Receber notificações do sistema
+                                        </p>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                        Em desenvolvimento
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
                 {/* Agentes Tab */}
                 <TabsContent value="agents" className="space-y-6">
@@ -143,10 +177,11 @@ export default function SettingsPage() {
                                             variant="destructive"
                                             size="sm"
                                             onClick={handleClearAll}
+                                            disabled={saving}
                                             className="flex items-center gap-2"
                                         >
                                             <Trash2 className="w-4 h-4" />
-                                            Limpar tudo
+                                            {saving ? "Limpando..." : "Limpar tudo"}
                                         </Button>
                                     </div>
 
@@ -209,18 +244,19 @@ export default function SettingsPage() {
                                                     )}
 
                                                     {/* Botão remover */}
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() =>
-                                                            handleRemoveAgent(
-                                                                agent.id
-                                                            )
-                                                        }
-                                                        className="absolute top-2 right-2 text-destructive hover:text-destructive"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
+                                                     <Button
+                                                         variant="ghost"
+                                                         size="icon"
+                                                         onClick={() =>
+                                                             handleRemoveAgent(
+                                                                 agent.id
+                                                             )
+                                                         }
+                                                         disabled={saving}
+                                                         className="absolute top-2 right-2 text-destructive hover:text-destructive"
+                                                     >
+                                                         <Trash2 className="w-4 h-4" />
+                                                     </Button>
                                                 </div>
                                             );
                                         })}
@@ -254,7 +290,12 @@ export default function SettingsPage() {
                                                     ? "bg-muted/50"
                                                     : ""
                                             }`}
-                                        onClick={() => toggleAgent(agent)}
+                                     onClick={() => !saving && toggleAgent({
+                                         id: agent.id,
+                                         login: agent.login,
+                                         fullName: agent.fullName,
+                                         displayName: agent.displayName,
+                                     })}
                                     >
                                         <Avatar className="w-9 h-9">
                                             <AvatarFallback>
@@ -273,7 +314,7 @@ export default function SettingsPage() {
                                                 Login: {agent.login}
                                             </p>
                                         </div>
-                                        <Checkbox checked={alreadySelected} />
+                                        <Checkbox checked={alreadySelected} disabled={saving} />
                                     </div>
                                 );
                             })}
@@ -287,8 +328,11 @@ export default function SettingsPage() {
                         >
                             Cancelar
                         </Button>
-                        <Button onClick={() => setIsAgentModalOpen(false)}>
-                            Confirmar
+                        <Button 
+                            onClick={() => setIsAgentModalOpen(false)}
+                            disabled={saving}
+                        >
+                            {saving ? "Salvando..." : "Confirmar"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

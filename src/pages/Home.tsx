@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRealtimeAgents } from "@/hooks/use-realtime-agents";
-import { useSelectedAgentsStore } from "@/store/selectedAgentsStore";
+import { useFirebaseAgentSelection } from "@/hooks/use-firebase-agent-selection";
 
 import { useCoreStore } from "@/store/coreStore";
 import { PauseRequestNotifications } from "@/components/notifications/PauseRequestNotifications";
@@ -22,7 +22,7 @@ export default function HomePage() {
     const { orderedAgents, stats, loading, error, refresh } =
         useRealtimeAgents();
     const { messageCounts, clearAgentCount } = useAgentMessageCounts();
-    const { selectedAgents, hasSelection } = useSelectedAgentsStore();
+    const { selectedAgents, hasSelection } = useFirebaseAgentSelection();
 
     // === controle de seleção única e qual diálogo abrir ===
     const [selectedId, setSelectedId] = useState<string | null>(null);

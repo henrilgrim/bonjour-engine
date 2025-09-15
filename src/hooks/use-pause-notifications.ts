@@ -4,7 +4,7 @@ import {
     type PauseRequest,
 } from "@/lib/firebase/realtime/pause/request";
 import { usePwaNotifications } from "./use-pwa-notifications";
-import { useSelectedAgentsStore } from "@/store/selectedAgentsStore";
+import { useFirebaseAgentSelection } from "./use-firebase-agent-selection";
 
 interface UsePauseNotificationsOptions {
     accountcode: string;
@@ -25,7 +25,7 @@ export function usePauseNotifications({
     const [notifications, setNotifications] = useState<PauseRequest[]>([]);
     const previousKeysRef = useRef<Set<string>>(new Set());
     const { showNotification, isPageVisible } = usePwaNotifications();
-    const { selectedAgents, hasSelection } = useSelectedAgentsStore();
+    const { selectedAgents, hasSelection } = useFirebaseAgentSelection();
 
     useEffect(() => {
         if (!accountcode || !enabled) return;
