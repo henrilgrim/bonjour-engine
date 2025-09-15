@@ -6,8 +6,9 @@ import { getMessagesCollection } from "@/lib/firebase/firestore/chats";
 import type { ChatMessage } from "@/lib/firebase/firestore/chats/types";
 
 import { hslVar } from "@/utils/home";
-import { Pause, MessageSquare } from "lucide-react";
+import { Pause, MessageSquare, AlertCircle } from "lucide-react";
 import { useDurationFrom } from "@/hooks/use-duration-form";
+import { usePauseRequests } from "@/hooks/use-pause-requests";
 
 import AgentChatDialog from "./agent/AgentChatDialog";
 import AgentApproveReasonDialog from "./agent/approve-reason/ApproveReasonDialog";
@@ -58,6 +59,17 @@ export default function CardAgent({
 }: CardAgentProps) {
     const [dialogChatOpen, setDialogChatOpen] = useState(false);
     const [dialogReasonOpen, setDialogReasonOpen] = useState(false);
+    
+    const accountcode = useAuthStore((s) => s.company?.accountcode || "");
+    
+    // Hook para verificar se há solicitação de pausa pendente
+    const { request: pauseRequest, loading: pauseLoading } = usePauseRequests({
+        agentId: ag.login,
+        accountcode,
+    });
+    
+    // Verificar se há uma solicitação pendente
+    const hasPendingPauseRequest = pauseRequest && pauseRequest.status === "pending";
 
     const computedUnread = useUnreadForAgentCard(
         messageCount == null ? ag.login : undefined
@@ -72,7 +84,16 @@ export default function CardAgent({
     const duration = useDurationFrom(ag.dataevento);
 
     const handleCardClick = () => {
-        if (ag.isLoggedInPanel) onSelect(!isSelected);
+        if (!ag.isLoggedInPanel) return;
+        
+        // Se há uma solicitação de pausa pendente, abrir o modal de pausa
+        if (hasPendingPauseRequest) {
+            setDialogReasonOpen(true);
+            return;
+        }
+        
+        // Comportamento normal de seleção
+        onSelect(!isSelected);
     };
 
     const handleDialogClose =
@@ -90,7 +111,9 @@ export default function CardAgent({
                     isSelected
                         ? "ring-2 ring-primary/40 scale-[1.02] shadow-md"
                         : "hover:shadow-md",
-                    !ag.isLoggedInPanel
+                    hasPendingPauseRequest
+                        ? "ring-2 ring-orange-400/60 border-orange-300/50 bg-orange-50/30 dark:bg-orange-950/20 cursor-pointer"
+                        : !ag.isLoggedInPanel
                         ? "opacity-60 cursor-not-allowed"
                         : "cursor-pointer",
                     "max-w-sm w-full h-full",
@@ -101,16 +124,26 @@ export default function CardAgent({
                 }}
                 onClick={handleCardClick}
             >
-                {/* 1️⃣ Filas */}
-                <div className="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 mb-2">
-                    {ag.queues?.map((q) => (
-                        <div
-                            key={q.queueId}
-                            className="px-3 py-1 text-xs font-semibold uppercase rounded-lg border bg-muted/30 text-muted-foreground whitespace-nowrap"
-                        >
-                            {q.queueName}
+                {/* 1️⃣ Indicador de solicitação pendente + Filas */}
+                <div className="space-y-2 mb-2">
+                    {hasPendingPauseRequest && (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-orange-100 dark:bg-orange-950/30 border border-orange-300 dark:border-orange-700 rounded-lg">
+                            <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-400 animate-pulse" />
+                            <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                                Solicitação de pausa pendente
+                            </span>
                         </div>
-                    ))}
+                    )}
+                    <div className="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/20">
+                        {ag.queues?.map((q) => (
+                            <div
+                                key={q.queueId}
+                                className="px-3 py-1 text-xs font-semibold uppercase rounded-lg border bg-muted/30 text-muted-foreground whitespace-nowrap"
+                            >
+                                {q.queueName}
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 {/* 2️⃣ Nome + Ações */}
