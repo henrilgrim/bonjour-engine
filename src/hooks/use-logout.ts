@@ -1,84 +1,38 @@
-import { useState, useCallback } from "react";
-import { useAuthStore } from "@/store/authStore";
-import { logoutFirebase } from "@/lib/firebase/authentication";
-import { useAppStore } from "@/store/appStore";
-import { useReasonStore } from "@/store/reasonStore";
-import { useTableStore } from "@/store/tableStore";
-import { useSupervisorStore } from "@/store/supervisorStore";
-import { useCoreStore } from "@/store/coreStore";
-import { useCentralNotificationStore } from "@/store/centralNotificationsStore";
-import { logoutAgent } from "@/lib/firebase/realtime/online";
+import { useState, useCallback } from 'react'
+import { useAuthStore } from '@/store/authStore'
+import { useQueuesStore } from '@/store/queuesStore'
+import { logoutInRTDB } from '@/lib/firebase/realtime/online'
+import { logoutFirebase } from '@/lib/firebase/functions/auth-firebase'
 
 export function useLogout() {
-    const [isLoading, setIsLoading] = useState(false);
-    const authStoreSignOut = useAuthStore((s) => s.signOut);
-    const userId = useAuthStore((s) => s.user?.id);
-    const accountcode = useAppStore((s) => s.company?.accountcode);
-    const authStoreClear = useAuthStore((s) => s.clear);
-    const appStoreClear = useAppStore((s) => s.clear);
-    const reasonStoreClear = useReasonStore((s) => s.clear);
-    const tableStoreClear = useTableStore((s) => s.clear);
-    const tableStoreSetActive = useTableStore((s) => s.setActive);
-    const supervisorStoreClear = useSupervisorStore((s) => s.clear);
-    const coreStoreClear = useCoreStore((s) => s.clear);
-    const centralNotificationStoreClear = useCentralNotificationStore(
-        (s) => s.clear
-    );
+	const [isLoading, setIsLoading] = useState(false)
+	const authStore = useAuthStore()
+	const queuesStore = useQueuesStore()
+	const user = { ...authStore.user }
 
-    const setListening = useSupervisorStore((s) => s.setListening);
+	const logout = useCallback(async (opts?: { keepAnonymous?: boolean }) => {
+		setIsLoading(true)
+		try {
+			authStore.clear()
+			queuesStore.clear()
 
-    const logout = useCallback(
-        async (opts?: { keepAnonymous?: boolean }) => {
-            setIsLoading(true);
+			await logoutInRTDB({ user_id: user.id, accountcode: user.accountcode })
+			await logoutFirebase({ keepAnonymous: false, ...opts })
+		} catch (error) {
+			authStore.clear()
+			queuesStore.clear()
 
-            try {
-                tableStoreSetActive(false);
-                setListening(false);
-                await authStoreSignOut();
-                await logoutAgent(userId, accountcode);
+			try {
+				await logoutInRTDB({ user_id: user.id, accountcode: user.accountcode })
+				await logoutFirebase({ keepAnonymous: false, ...opts })
+			} catch { }
+		} finally {
+			setIsLoading(false)
+		}
+	}, [authStore])
 
-                appStoreClear();
-                authStoreClear();
-                reasonStoreClear();
-                tableStoreClear();
-                supervisorStoreClear();
-                coreStoreClear();
-                centralNotificationStoreClear();
-
-                await logoutFirebase({ keepAnonymous: false, ...opts });
-            } catch (error) {
-                tableStoreSetActive(false);
-                setListening(false);
-                await authStoreSignOut();
-
-                appStoreClear();
-                authStoreClear();
-                reasonStoreClear();
-                tableStoreClear();
-                supervisorStoreClear();
-                coreStoreClear();
-                centralNotificationStoreClear();
-
-                console.error("Logout error:", error);
-                try {
-                    await logoutFirebase({ keepAnonymous: false, ...opts });
-                } catch {}
-            } finally {
-                setIsLoading(false);
-            }
-        },
-        [
-            authStoreSignOut,
-            appStoreClear,
-            reasonStoreClear,
-            tableStoreClear,
-            tableStoreSetActive,
-            authStoreClear,
-        ]
-    );
-
-    return {
-        logout,
-        isLoading,
-    };
+	return {
+		logout,
+		isLoading,
+	}
 }

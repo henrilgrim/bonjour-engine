@@ -1,39 +1,27 @@
-import { Outlet, useLocation } from "react-router-dom";
-import Header from "@/components/layout/Header";
-import { useGlobalChatListener } from "@/hooks/use-global-chat-listener";
-
-type cfgProps = {
-    visible?: boolean;
-};
+import { Outlet, useLocation } from "react-router-dom"
+import Header from "@/components/layout/Header"
+import { useCoreStore } from "@/store/coreStore"
 
 export default function AppLayout() {
-    const { pathname } = useLocation();
+    const { pathname } = useLocation()
+    const isHeaderVisible = useCoreStore((s) => s.isHeaderVisible)
 
-    // Ativa o listener global de notificações de mensagens
-    useGlobalChatListener();
-
-    const cfg: cfgProps = (() => {
-        if (pathname.startsWith("/home"))
-            return {
-                visible: true,
-            };
-        return {
-            visible: true,
-        };
-    })();
+    const cfg = (() => {
+        if (pathname.startsWith("/home")) return { visible: true, showToggleFullscreen: true }
+        return { visible: true, showToggleFullscreen: false }
+    })()
 
     return (
-        <div className="flex flex-col min-h-screen">
-            {cfg.visible && (
-                <header className="sticky top-0 z-50 w-full bg-background shadow-md px-6 py-3 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div className="min-h-screen">
+            {cfg.visible && isHeaderVisible && (
+                <div className="px-4 md:px-6 pt-4 md:pt-6">
                     <Header />
-                </header>
+                </div>
             )}
 
-            {/* Conteúdo principal ocupa o restante */}
-            <main className="flex-1 w-full">
+            <main className="px-4 md:px-6">
                 <Outlet />
             </main>
         </div>
-    );
+    )
 }

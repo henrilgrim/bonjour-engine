@@ -1,4 +1,4 @@
-# Agente PXTALK — Guia de Release & Deploy
+# Gestor PXTALK — Guia de Release & Deploy
 
 Este README descreve como versionar, como publicar e como operar o app em produção usando branches `dev` → `main` e PM2 no servidor.  
 Inclui também dicas de quando usar `patch` / `minor` / `major` (SemVer), scripts, e resolução de problemas comuns.
@@ -7,7 +7,7 @@ Inclui também dicas de quando usar `patch` / `minor` / `major` (SemVer), script
 
 ## 📚 Sumário
 
-- [Agente PXTALK — Guia de Release \& Deploy](#agente-pxtalk--guia-de-release--deploy)
+- [Monitor PXTALK — Guia de Release \& Deploy](#monitor-pxtalk--guia-de-release--deploy)
   - [📚 Sumário](#-sumário)
   - [🔁 Fluxo de branches](#-fluxo-de-branches)
   - [🔖 Versionamento (SemVer) — quando usar patch/minor/major](#-versionamento-semver--quando-usar-patchminormajor)
@@ -105,7 +105,7 @@ O `deploy.sh start` executa:
 
 1. `npm ci` (ou `npm install` se não houver lock)
 2. `npm run build` (gera artefatos e arquivos de versão)
-3. `pm2 start "npm run preview -- --port 9191 --host" --name agente-pxtalk`
+3. `pm2 start "npm run preview -- --port 9191 --host" --name monitor-pxtalk`
 
 Se estiver atrás de Nginx/Proxy, usar `--host` é importante para aceitar conexões externas.
 
@@ -121,26 +121,23 @@ git pull --ff-only
 
 bash ./deploy.sh restart   # rebuild + restart
 pm2 status
-pm2 logs agente-pxtalk --lines 50
+pm2 logs monitor-pxtalk --lines 50
 ```
 
 ---
 
 ## 📜 Scripts úteis
 
-No `package.json`, tem os atalhos:
+No `package.json`, crie os atalhos:
 
 ```json
 {
-	"scripts": {
-		"build": "vite build",
-		"prebuild": "node ./scripts/write-build-meta.ts",
-		"pm2:start": "./deploy.sh start",
-		"pm2:restart": "./deploy.sh restart",
-		"pm2:stop": "./deploy.sh stop",
-		"pm2:delete": "./deploy.sh delete",
-		"pm2:logs": "./deploy.sh logs",
-  	}
+  "scripts": {
+    "pm2:start": "bash ./deploy.sh start",
+    "pm2:restart": "bash ./deploy.sh restart",
+    "build": "vite build",
+    "prebuild": "node ./scripts/write-build-meta.ts"
+  }
 }
 ```
 
@@ -198,14 +195,17 @@ git push
 ## ⚙️ PM2 — dicas rápidas
 
 ```bash
+# Ver status:
+pm2 status
+
 # Logs:
-npm run pm2:logs
+pm2 logs monitor-pxtalk --lines 100
 
 # Reiniciar:
-npm run pm2:restart
+pm2 restart monitor-pxtalk
 
 # Limpar logs:
-pm2 flush agente-pxtalk
+pm2 flush monitor-pxtalk
 
 # Salvar processos para iniciar com o SO:
 pm2 save
@@ -233,7 +233,7 @@ npm audit
 ```
 
 **Deploy não reinicia**  
-Verifique `deploy.sh` e o nome do app no PM2 (`agente-pxtalk`).  
+Verifique `deploy.sh` e o nome do app no PM2 (`monitor-pxtalk`).  
 Use `pm2 logs` para verificar erros.
 
 ---

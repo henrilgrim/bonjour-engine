@@ -1,138 +1,89 @@
-import { useEffect } from "react";
-import {
-    BrowserRouter,
-    Routes,
-    Route,
-    useLocation,
-    Navigate,
-} from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
+import LoginPage from "./pages/Login";
+import HomePage from "./pages/Home";
+import AgentSelection from "./pages/AgentSelection";
+import SettingsPage from "./pages/Settings";
+import AuthGuard from "./components/auth/AuthGuard";
+import DevToolsProtection from "./config/devtools-protection";
 import { UiThemeProvider } from "@/contexts/ui-theme";
-
-import AuthGuard from "@/components/layout/AuthGuard";
-import AppUpdateWatcher from "@/components/system/AppUpdateWatcher";
-
 import AppLayout from "@/components/layout/AppLayout";
-
-import LoginPage from "@/pages/Login";
-import HomePage from "@/pages/Home";
-import SettingsPage from "@/pages/Settings";
-import CompanyErrorPage from "@/pages/CompanyErrorPage";
-import NotFound from "@/pages/NotFound";
-
-import { useAppStore } from "@/store/appStore";
+import AppUpdateWatcher from "./components/system/AppUpdateWatcher";
+import { GlobalNotifications } from "@/components/notifications/GlobalNotifications";
 
 const queryClient = new QueryClient();
-
-function AppRoutesWrapper() {
-    const location = useLocation();
-
-    const setCode = useAppStore((s) => s.setCode);
-    const setCompany = useAppStore((s) => s.setCompany);
-    const checkCompanyCode = useAppStore((s) => s.checkCompanyCode);
-    const hasFetchedCompany = useAppStore((s) => s.hasFetchedCompany);
-    const company = useAppStore((s) => s.company);
-
-    useEffect(() => {
-        const codeFromLocalStorage = localStorage.getItem("code");
-        const params = new URLSearchParams(location.search);
-        const codeFromUrl = params.get("id");
-
-        let code = codeFromUrl || codeFromLocalStorage;
-
-        if (code && (!hasFetchedCompany || !company)) {
-            setCode(code);
-
-            checkCompanyCode(code)
-                .then((res) => {
-                    if (res?.company) {
-                        setCompany(res.company);
-                    } else {
-                        console.warn(
-                            "Código de empresa inválido:",
-                            res?.message
-                        );
-                    }
-                })
-                .catch((err) => {
-                    console.error("Erro ao verificar código de empresa:", err);
-                });
-        }
-    }, [
-        location.search,
-        hasFetchedCompany,
-        company,
-        setCode,
-        setCompany,
-        checkCompanyCode,
-    ]);
-
-    return (
-        <>
-            <Routes>
-                <Route path="/" element={<Navigate to="/login" replace />} />
-                <Route
-                    path="/login"
-                    element={
-                        <AuthGuard requireAuth={false}>
-                            <LoginPage />
-                        </AuthGuard>
-                    }
-                />
-
-                <Route element={<AppLayout />}>
-                    <Route
-                        path="/home"
-                        element={
-                            <AuthGuard requireAuth={true}>
-                                <HomePage />
-                            </AuthGuard>
-                        }
-                    />
-                    <Route
-                        path="/settings"
-                        element={
-                            <AuthGuard requireAuth={true}>
-                                <SettingsPage />
-                            </AuthGuard>
-                        }
-                    />
-                </Route>
-
-                <Route
-                    path="/company-not-found"
-                    element={<CompanyErrorPage />}
-                />
-                <Route path="*" element={<NotFound />} />
-            </Routes>
-
-            {/* Componentes globais */}
-            <AppUpdateWatcher />
-        </>
-    );
-}
 
 export default function App() {
     return (
         <UiThemeProvider>
-            <TooltipProvider>
-                <QueryClientProvider client={queryClient}>
+            <QueryClientProvider client={queryClient}>
+                <TooltipProvider>
+                    <DevToolsProtection
+                        requiredKey="PX_SECRET"
+                        requiredValue="diogenes_sinope"
+                    />
+                    <Toaster />
+                    <Sonner />
+                    <AppUpdateWatcher />
+                    <GlobalNotifications />
+
                     <BrowserRouter
                         future={{
                             v7_startTransition: true,
                             v7_relativeSplatPath: true,
                         }}
                     >
-                        <AppRoutesWrapper />
+                        <Routes>
+                            {/* Rotas SEM header */}
+                            <Route path="/" element={<Index />} />
+                            <Route
+                                path="/login"
+                                element={
+                                    <AuthGuard requireAuth={false}>
+                                        <LoginPage />
+                                    </AuthGuard>
+                                }
+                            />
+
+                            {/* Rotas COM header (dentro do layout) */}
+                            <Route element={<AppLayout />}>
+                                <Route
+                                    path="/home"
+                                    element={
+                                        <AuthGuard requireAuth={true}>
+                                            <HomePage />
+                                        </AuthGuard>
+                                    }
+                                />
+                                <Route
+                                    path="/agent-selection"
+                                    element={
+                                        <AuthGuard requireAuth={true}>
+                                            <AgentSelection />
+                                        </AuthGuard>
+                                    }
+                                />
+                                <Route
+                                    path="/settings"
+                                    element={
+                                        <AuthGuard requireAuth={true}>
+                                            <SettingsPage />
+                                        </AuthGuard>
+                                    }
+                                />
+                            </Route>
+
+                            {/* 404 */}
+                            <Route path="*" element={<NotFound />} />
+                        </Routes>
                     </BrowserRouter>
-                    <Toaster />
-                    <Sonner theme="system" />
-                </QueryClientProvider>
-            </TooltipProvider>
+                </TooltipProvider>
+            </QueryClientProvider>
         </UiThemeProvider>
     );
 }

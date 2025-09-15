@@ -1,229 +1,298 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useSelectedAgentsStore } from "@/store/selectedAgentsStore";
+import { useRealtimeAgents } from "@/hooks/use-realtime-agents";
+import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { useLogout } from "@/hooks/use-logout";
-import { useNotificationsConfig } from "@/hooks/use-notifications-config";
-import { ChevronLeft, Settings2 } from "lucide-react";
-import CardReset from "@/components/settings/CardReset";
-import CardNotification from "@/components/settings/CardNotification";
-import StatusBar from "@/components/settings/StatusBar";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CardDescription,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Users, Trash2, Plus } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
-interface LocalNotificationsConfig {
-    messageNotifications: boolean;
-    pauseNotifications: boolean;
-    systemNotifications: boolean;
-    soundType: string;
-    volume: number;
-}
-
-export default function Settings() {
-    const [isClearing, setIsClearing] = useState(false);
-    const { toast } = useToast();
-    const { logout } = useLogout();
-    const navigate = useNavigate();
-
+export default function SettingsPage() {
+    const { user } = useAuthStore();
+    const { orderedAgents } = useRealtimeAgents();
     const {
-        messageNotifications,
-        pauseNotifications,
-        systemNotifications,
-        soundType,
-        volume,
-        loading: notificationsLoading,
-        saving: notificationsSaving,
-        saveNotificationsConfig,
-    } = useNotificationsConfig();
+        selectedAgents,
+        clearSelection,
+        removeAgent,
+        hasSelection,
+        toggleAgent,
+    } = useSelectedAgentsStore();
 
-    // Estado local das configurações
-    const [localConfig, setLocalConfig] = useState<LocalNotificationsConfig>({
-        messageNotifications: messageNotifications || false,
-        pauseNotifications: pauseNotifications || false,
-        systemNotifications: systemNotifications || false,
-        soundType: soundType || "soft",
-        volume: volume || 50,
-    });
+    // Settings state
+    const [notifications, setNotifications] = useState(true);
+    const [sounds, setSounds] = useState(true);
+    const [autoRefresh, setAutoRefresh] = useState(true);
+    const [darkMode, setDarkMode] = useState(false);
 
-    // Verifica se há mudanças não salvas
-    const hasUnsavedChanges = useMemo(() => {
-        return (
-            localConfig.messageNotifications !== messageNotifications ||
-            localConfig.pauseNotifications !== pauseNotifications ||
-            localConfig.systemNotifications !== systemNotifications ||
-            localConfig.soundType !== soundType ||
-            localConfig.volume !== volume
-        );
-    }, [
-        localConfig,
-        messageNotifications,
-        pauseNotifications,
-        systemNotifications,
-        soundType,
-        volume,
-    ]);
+    // Modal state
+    const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
 
-    // Sincroniza estado local com o global quando carrega
-    useEffect(() => {
-        setLocalConfig({
-            messageNotifications: messageNotifications || false,
-            pauseNotifications: pauseNotifications || false,
-            systemNotifications: systemNotifications || false,
-            soundType: soundType || "soft",
-            volume: volume || 50,
+    const handleRemoveAgent = (agentId: string) => {
+        removeAgent(agentId);
+        toast({
+            title: "Agente removido",
+            description: "O agente foi removido da lista de monitoramento",
         });
-    }, [
-        messageNotifications,
-        pauseNotifications,
-        systemNotifications,
-        soundType,
-        volume,
-    ]);
-
-    const notifPermission: NotificationPermission | "unsupported" =
-        useMemo(() => {
-            if (typeof window === "undefined" || !("Notification" in window))
-                return "unsupported";
-            return Notification.permission;
-        }, []);
-
-    const isBusy = notificationsLoading || notificationsSaving;
-
-    const handleLocalConfigChange = (
-        key: keyof LocalNotificationsConfig,
-        value: boolean | string | number
-    ) => {
-        setLocalConfig((prev) => ({
-            ...prev,
-            [key]: value,
-        }));
     };
 
-    const handleSaveSettings = async () => {
-        try {
-            await saveNotificationsConfig(localConfig);
-            toast({
-                title: "Configurações salvas",
-                description: "Suas preferências foram salvas com sucesso.",
-            });
-        } catch (error) {
-            console.error("Erro ao salvar configurações:", error);
-            toast({
-                title: "Erro ao salvar",
-                description:
-                    "Não foi possível salvar as configurações. Tente novamente.",
-                variant: "destructive",
-            });
-        }
+    const handleClearAll = () => {
+        clearSelection();
+        toast({
+            title: "Lista limpa",
+            description:
+                "Todos os agentes foram removidos da lista de monitoramento",
+        });
     };
 
-    const clearAllBrowserData = async () => {
-        setIsClearing(true);
-        try {
-            localStorage.clear();
-            sessionStorage.clear();
-
-            if ("indexedDB" in window) {
-                try {
-                    const databases = await indexedDB.databases();
-                    for (const db of databases) {
-                        if (db.name) indexedDB.deleteDatabase(db.name);
-                    }
-                } catch (error) {
-                    console.warn("Erro ao limpar IndexedDB:", error);
-                }
-            }
-
-            await logout({ keepAnonymous: false });
-
-            toast({
-                title: "Dados limpos com sucesso",
-                description: "A aplicação será recarregada em instantes.",
-                variant: "success",
-            });
-
-            setTimeout(() => {
-                window.location.href = "/";
-            }, 1500);
-        } catch (error) {
-            console.error("Erro ao limpar dados:", error);
-            toast({
-                title: "Erro ao limpar dados",
-                description: "Tente novamente em instantes.",
-                variant: "destructive",
-            });
-        } finally {
-            setIsClearing(false);
-        }
+    const handleAddAgents = () => {
+        setIsAgentModalOpen(true);
     };
-
-    const requestNotifPermission = async () => {
-        if (!("Notification" in window)) return;
-        try {
-            await Notification.requestPermission();
-            window.location.reload();
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    useEffect(() => {
-        document.title = "Configurações · PX";
-    }, []);
 
     return (
-        <div className="max-w-8xl mx-auto px-4 py-6 space-y-6">
-            {/* HEADER / HERO */}
+        <div>
+            <Tabs defaultValue="agents" className="space-y-6">
+                <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger
+                        value="agents"
+                        className="flex items-center gap-2"
+                    >
+                        <Users className="w-4 h-4" />
+                        Agentes
+                    </TabsTrigger>
+                </TabsList>
 
-            <div className="flex items-start justify-between">
-                <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                        <Settings2 className="h-3.5 w-3.5" />
-                        Preferências do usuário
-                    </div>
-                    <h1 className="mt-3 text-3xl font-bold tracking-tight">
-                        Configurações
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Personalize notificações, tutorial e dados locais do
-                        aplicativo.
-                    </p>
-                </div>
+                {/* Agentes Tab */}
+                <TabsContent value="agents" className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Users className="w-5 h-5" />
+                                        Agentes Selecionados
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Gerencie os agentes que você está
+                                        monitorando atualmente
+                                    </CardDescription>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="secondary">
+                                        {selectedAgents.length} selecionados
+                                    </Badge>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleAddAgents}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Adicionar
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {!hasSelection || selectedAgents.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                                    <p className="text-muted-foreground mb-4">
+                                        Nenhum agente selecionado para
+                                        monitoramento
+                                    </p>
+                                    <Button
+                                        onClick={handleAddAgents}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Selecionar Agentes
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-sm text-muted-foreground">
+                                            {selectedAgents.length} agente
+                                            {selectedAgents.length !== 1
+                                                ? "s"
+                                                : ""}{" "}
+                                            sendo monitorado
+                                            {selectedAgents.length !== 1
+                                                ? "s"
+                                                : ""}
+                                        </p>
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={handleClearAll}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            Limpar tudo
+                                        </Button>
+                                    </div>
 
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate(-1)}
-                    className="gap-1"
-                >
-                    <ChevronLeft className="w-4 h-4" />
-                    Voltar
-                </Button>
-            </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-96 overflow-auto nice-scroll">
+                                        {selectedAgents.map((agent) => {
+                                            const currentAgent =
+                                                orderedAgents.find(
+                                                    (a) => a.id === agent.id
+                                                );
+                                            return (
+                                                <div
+                                                    key={agent.id}
+                                                    className="relative flex flex-col gap-3 p-4 rounded-lg border bg-card shadow-sm hover:shadow-md transition-shadow"
+                                                >
+                                                    {/* Avatar + Nome */}
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="w-10 h-10">
+                                                            <AvatarFallback className="text-xs font-semibold">
+                                                                {agent.displayName
+                                                                    .split(" ")
+                                                                    .map(
+                                                                        (n) =>
+                                                                            n[0]
+                                                                    )
+                                                                    .join("")
+                                                                    .slice(
+                                                                        0,
+                                                                        2
+                                                                    )}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="flex-1">
+                                                            <p className="font-medium truncate">
+                                                                {
+                                                                    agent.displayName
+                                                                }
+                                                            </p>
+                                                            <p className="text-sm text-muted-foreground truncate">
+                                                                Login:{" "}
+                                                                {agent.login}
+                                                            </p>
+                                                        </div>
+                                                    </div>
 
-            {/* STATUS BAR */}
-            <StatusBar
-                notifPermission={notifPermission}
-                isBusy={isBusy}
-                hasUnsavedChanges={hasUnsavedChanges}
-                requestNotifPermission={requestNotifPermission}
-            />
+                                                    {/* Status */}
+                                                    {currentAgent && (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="w-fit text-xs"
+                                                            style={{
+                                                                borderColor:
+                                                                    currentAgent.color,
+                                                                color: currentAgent.color,
+                                                            }}
+                                                        >
+                                                            {
+                                                                currentAgent.status
+                                                            }
+                                                        </Badge>
+                                                    )}
 
-            {/* GRID */}
-            <div className="grid gap-6 md:grid-cols-1">
-                {/* NOTIFICAÇÕES */}
-                {/* <CardNotification
-                    localConfig={localConfig}
-                    isBusy={isBusy}
-                    hasUnsavedChanges={hasUnsavedChanges}
-                    handleLocalConfigChange={handleLocalConfigChange}
-                    handleSaveSettings={handleSaveSettings}
-                /> */}
+                                                    {/* Botão remover */}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() =>
+                                                            handleRemoveAgent(
+                                                                agent.id
+                                                            )
+                                                        }
+                                                        className="absolute top-2 right-2 text-destructive hover:text-destructive"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
 
-                {/* RESET */}
-                <CardReset
-                    isClearing={isClearing}
-                    clearAllBrowserData={clearAllBrowserData}
-                />
-            </div>
+            {/* Modal de seleção de agentes */}
+            <Dialog open={isAgentModalOpen} onOpenChange={setIsAgentModalOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Selecionar Agentes</DialogTitle>
+                    </DialogHeader>
+
+                    <ScrollArea className="h-96 pr-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {orderedAgents.map((agent) => {
+                                const alreadySelected = selectedAgents.some(
+                                    (a) => a.id === agent.id
+                                );
+                                return (
+                                    <div
+                                        key={agent.id}
+                                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted
+                                            ${
+                                                alreadySelected
+                                                    ? "bg-muted/50"
+                                                    : ""
+                                            }`}
+                                        onClick={() => toggleAgent(agent)}
+                                    >
+                                        <Avatar className="w-9 h-9">
+                                            <AvatarFallback>
+                                                {agent.displayName
+                                                    .split(" ")
+                                                    .map((n) => n[0])
+                                                    .join("")
+                                                    .slice(0, 2)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1">
+                                            <p className="font-medium truncate">
+                                                {agent.displayName}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Login: {agent.login}
+                                            </p>
+                                        </div>
+                                        <Checkbox checked={alreadySelected} />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </ScrollArea>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsAgentModalOpen(false)}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button onClick={() => setIsAgentModalOpen(false)}>
+                            Confirmar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

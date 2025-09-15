@@ -1,248 +1,141 @@
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import { getApiService } from "@/lib/api/services";
-import { Agent } from "@/types/auth-store";
-import { AgentStatus, useAppStore } from "@/store/appStore";
-import generateUserDataFormatted from "@/utils/generateUserDataFormatted";
-import { Profile } from "@/lib/firebase/firestore/profiles/types";
+import { create } from "zustand"
+import { persist, createJSONStorage } from "zustand/middleware"
+import { getApiService } from "@/lib/api/services"
+import { Company, mapCompany } from "@/types/company"
+import { loginInRTDB } from "@/lib/firebase/realtime/online"
+
+export type User = {
+	id: string
+	nome: string
+	login: string
+	empresa_id: string
+	empresa_nome: string
+	accountcode: string
+	type: string
+	token_pxtalk: string
+	token_service: string
+}
 
 interface AuthState {
-    isAuthenticated: boolean;
-    user: Agent | null;
-    userFirebase: Profile | null;
+	isAuthenticated: boolean
+	user: User | null
+	company: Company | null
+	loading: boolean
+	isLoading: boolean
+	error: string | null
+	tvMode: boolean
+	login: (credentials: { login: string; password: string }) => Promise<{ error: boolean, message?: string }>
+	clear: () => void
+	clearError: () => void
+	toggleTvMode: () => void
+}
 
-    loading: boolean;
-    isLoading: boolean;
-    error: string | null;
+export function isMonitorEnabled(e?: Company) {
+	let isPermitted: boolean
 
-    setUser: (user: Agent) => void;
-    setUserFirebase: (userFirebase: Profile | null) => void;
-    setIsAuthenticated: (isAuthenticated: boolean) => void;
+	if (!e) isPermitted = false
+	else if (e.blocked) isPermitted = false
+	else if (!e.painel_monitor_enabled) isPermitted = false
+	else isPermitted = true
 
-    signIn: (
-        extension: string,
-        login: string,
-        password: string
-    ) => Promise<{ error: boolean; message?: string }>;
-    signOut: () => Promise<{ error: boolean; message?: string }>;
-    clear: () => void;
+	return isPermitted
 }
 
 export const useAuthStore = create<AuthState>()(
-    persist(
-        (set, get) => ({
-            isAuthenticated: false,
-            user: null,
-            userFirebase: null,
+	persist(
+		(set, get) => ({
+			isAuthenticated: false,
+			user: null,
+			company: null,
+			loading: false,
+			isLoading: false,
+			error: null,
+			tvMode: false,
 
-            loading: false,
-            isLoading: false,
-            error: null,
+			async login({ login, password }) {
+				set({ loading: true, isLoading: true, error: null })
 
-            setUser: (user: Agent) => set({ user }),
-            setUserFirebase: (userFirebase: Profile | null) =>
-                set({ userFirebase }),
-            setIsAuthenticated: (isAuthenticated: boolean) =>
-                set({ isAuthenticated }),
+				try {
+					const { data: serviceLogin } = await getApiService('auth', 'public').post("/login", { app_id: '5e3c0ae79363a015375d6ff1', login, senha: password })
+					if (!serviceLogin || serviceLogin.error || !serviceLogin.dados?.usuario) {
+						set({ isAuthenticated: false, user: null })
+						return { error: true, message: serviceLogin?.message || "Erro no login do serviço" }
+					}
 
-            async signIn(extension, login, password) {
-                set({ loading: true, error: null });
+					const { data: pxtalkLogin } = await getApiService('pxtalk', 'public').post("/users/authenticate", { login, password })
+					if (!pxtalkLogin || pxtalkLogin.error || !pxtalkLogin.token) {
+						set({ isAuthenticated: false, user: null })
+						return { error: true, message: pxtalkLogin?.message || "Erro no login PxTalk" }
+					}
 
-                try {
-                    const company = useAppStore.getState().company;
-                    const setActualAgentStatus =
-                        useAppStore.getState().setActualAgentStatus;
+					const usuario = serviceLogin.dados.usuario
+					const token_service = serviceLogin.dados.token?.replace(/^bearer\s+/i, "") || ""
+					const token_pxtalk = pxtalkLogin.token?.replace(/^bearer\s+/i, "") || ""
 
-                    // ANTIGO:
-                    // const { data, status } = await getApiService("pxtalkApi2", "public").post('/painel-agents/login', {
-                    // 	accountcode: company.accountcode,
-                    // 	ramal: extension,
-                    // 	login,
-                    // 	senha: password
-                    // });
+					const { data: meData } = await getApiService('pxtalkV1', 'private', token_service).get("/companies/me")
+					if (!meData || meData.error || !meData.company) {
+						set({ isAuthenticated: false, user: null })
+						return { error: true, message: meData?.message || "Erro ao obter dados da empresa" }
+					}
 
-                    const registernumber =
-                        useAppStore.getState().extension.registernumber;
+					const empresa = mapCompany(meData.company) as Company
+					if (!isMonitorEnabled(empresa)) {
+						set({ isAuthenticated: false, user: null })
+						return { error: true, message: "Painel de monitoramento não habilitado" }
+					}
 
-                    const { data, status } = await getApiService(
-                        "pxtalkApi2",
-                        "public"
-                    ).post("/painel-agents/loginV2", {
-                        accountcode: company.accountcode,
-                        registernumber,
-                        extennumber: extension,
-                        agent: {
-                            login,
-                            password,
-                        },
-                    });
+					const accountcode: string = (empresa as any)?.accountcode ?? usuario?.empresaConf?.pbx?.accountcode ?? ""
 
-                    const { agent } = data;
+					set({
+						isAuthenticated: true,
+						user: {
+							id: String(usuario._id),
+							nome: usuario.nome,
+							login: usuario.login,
+							empresa_id: String(usuario.empresa_id),
+							empresa_nome: usuario.empresa_nome,
+							accountcode,
+							type: usuario.type,
+							token_service,
+							token_pxtalk,
+						},
+						company: empresa,
+						error: null,
+					})
 
-                    const agentStatus: AgentStatus = {
-                        name: agent.name,
-                        extension,
-                        queues: (agent.multipleQueuesEnabled
-                            ? agent.queues
-                            : []
-                        ).map((q) => ({
-                            id: q.queue._id,
-                            name: q.queue.key["queue-name"],
-                            status: false,
-                            priority: q.priority,
-                        })),
-                    };
+					return { error: false }
+				} catch (err: any) {
+					set({
+						isAuthenticated: false,
+						user: null,
+						error: err?.message || "Erro desconhecido",
+					})
+					return { error: true, message: err?.message || "Erro desconhecido" }
+				} finally {
+					set({ loading: false, isLoading: false })
+				}
+			},
 
-                    // salva corretamente no AppStore
-                    setActualAgentStatus(agentStatus);
+			clear: () => {
+				set({ isAuthenticated: false, user: null, company: null, loading: false, isLoading: false, error: null })
+			},
 
-                    if (status !== 200 || !data)
-                        throw new Error("Dados inválidos retornados pela API.");
+			clearError: () => {
+				set({ error: null })
+			},
 
-                    const formattedUser = generateUserDataFormatted({
-                        ...data,
-                        extension,
-                    }) as Agent;
+			toggleTvMode: () => {
+				set({ tvMode: !get().tvMode })
+			},
+		}),
+		{
+			name: "auth-storage",
+			storage: createJSONStorage(() => localStorage),
+		}
+	)
+)
 
-                    set({ user: formattedUser, loading: false });
-                    return { error: false };
-                } catch (err: any) {
-                    console.log("Erro ao fazer login:", err);
-                    const message: string =
-                        err?.details?.message ||
-                        err?.response?.data?.message ||
-                        err?.message ||
-                        "Erro desconhecido.";
-                    if (message.startsWith("Agente já está logado no ramal")) {
-                        try {
-                            const ramalConflitante =
-                                message.match(/ramal: (\d+)/)?.[1] ?? null;
-
-                            if (
-                                ramalConflitante &&
-                                ramalConflitante === extension
-                            ) {
-                                await getApiService(
-                                    "pxtalkApi2",
-                                    "public"
-                                ).post("/painel-agents/logout", {
-                                    accountcode:
-                                        useAppStore.getState().company
-                                            .accountcode,
-                                    ramal: extension,
-                                    login,
-                                    senha: password,
-                                });
-
-                                return {
-                                    error: false,
-                                    message:
-                                        "Sessão anterior desconectada. Tente novamente.",
-                                };
-                            } else {
-                                return {
-                                    error: true,
-                                    message: `Agente já está logado no ramal: ${ramalConflitante}`,
-                                };
-                            }
-                        } catch (logoutErr: any) {
-                            console.log(
-                                "Erro ao finalizar sessão anterior:",
-                                logoutErr
-                            );
-                            const m =
-                                logoutErr?.details?.message ||
-                                logoutErr?.response?.data?.message ||
-                                logoutErr?.message ||
-                                "Erro desconhecido.";
-
-                            if (m.includes("Extension does not exist")) {
-                                return {
-                                    error: false,
-                                    message:
-                                        "Sessão anterior desconectada. Tente novamente.",
-                                };
-                            } else {
-                                return {
-                                    error: true,
-                                    message:
-                                        "Erro ao finalizar sessão anterior. Tente novamente.",
-                                };
-                            }
-                        }
-                    } else {
-                        return { error: true, message };
-                    }
-                } finally {
-                    set({ loading: false });
-                }
-            },
-
-            async signOut(): Promise<{ error: boolean; message?: string }> {
-                set({ loading: true, error: null });
-
-                try {
-                    const company = useAppStore.getState().company;
-                    const agentState = useAppStore.getState().actualStateAgent;
-                    const extension = useAppStore.getState().extension;
-                    const user = get().user;
-
-                    const { data, status } = await getApiService(
-                        "pxtalkApi2",
-                        "private",
-                        user.token
-                    ).post("/painel-agents/logoutV2", {
-                        accountcode: company.accountcode,
-                        registernumber: extension.registernumber,
-                        extennumber: agentState.extension,
-
-                        agent: {
-                            login: user.login,
-                            password: user.password,
-                        },
-
-                        correlation_type_id: user.correlation_type_id,
-                    });
-                    if (status !== 200 || !data)
-                        throw new Error("Dados inválidos retornados pela API.");
-
-                    set({ error: null });
-                    return { error: false };
-                } catch (err: any) {
-                    console.log("Erro ao fazer login:", err);
-                    const m =
-                        err?.details?.message ||
-                        err?.response?.data?.message ||
-                        err?.message ||
-                        "Erro desconhecido.";
-
-                    return { error: true, message: m };
-                } finally {
-                    set({ loading: false });
-                }
-            },
-
-            clear: () => {
-                set({
-                    isAuthenticated: false,
-                    user: null,
-                    userFirebase: null,
-                    loading: false,
-                    isLoading: false,
-                    error: null,
-                });
-
-                localStorage.removeItem("auth-storage");
-            },
-        }),
-        {
-            name: "auth-storage",
-            storage: createJSONStorage(() => localStorage),
-            partialize: (state) => ({
-                isAuthenticated: state.isAuthenticated,
-                user: state.user,
-                userFirebase: state.userFirebase,
-            }),
-        }
-    )
-);
+// Hook customizado para acessar dados do usuário atual
+export const useCurrentUser = () => {
+	return useAuthStore(state => state.user)
+}

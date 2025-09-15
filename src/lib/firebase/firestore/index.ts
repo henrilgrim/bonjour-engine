@@ -8,3 +8,7 @@ export function getManagerPanelDoc(accountcode: string) {
 export function getAgentPanelDoc(accountcode: string) {
 	return doc(firestore, "pxtalk_call_center_module", accountcode, "agent_panel", "main")
 }
+
+export function getMonitorPanelDoc(accountcode: string) {
+	return doc(firestore, "pxtalk_call_center_module", accountcode, "monitor_panel", "main")
+}

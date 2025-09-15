@@ -1,110 +1,63 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ChatMessage } from "@/lib/firebase/firestore/chats/types";
-import {
-    getAllMessages,
-    markMessageAsRead,
-    sendMessage,
-    subscribeToMessages,
-} from "@/lib/firebase/firestore/chats";
-import { useAuthStore } from "@/store/authStore";
-import { CHAT_INDIVIDUAL_PREFIX } from "@/constants";
-import { useAppStore } from "@/store/appStore";
+import { useCallback, useEffect, useRef, useState } from "react"
+import { ChatMessage } from "@/lib/firebase/firestore/chats/types"
+import { getAllMessages, markMessageAsRead, sendMessage, subscribeToMessages } from "@/lib/firebase/firestore/chats"
+import { useAuthStore } from "@/store/authStore"
+import { CHAT_INDIVIDUAL_PREFIX } from "@/constants"
 
 type UseFirebaseChatParams = {
-    supervisorId: string | null;
-    autoSubscribe?: boolean;
-    onNewMessage?: (msg: ChatMessage) => void;
-};
+    agentLogin: string
+    autoSubscribe?: boolean
+}
 
-export function useFirebaseChat({
-    supervisorId,
-    autoSubscribe = true,
-    onNewMessage,
-}: UseFirebaseChatParams) {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-    const unsubRef = useRef<() => void>();
-    const lastMsgIdRef = useRef<string | null>(null);
+export function useFirebaseChat({ agentLogin, autoSubscribe = true }: UseFirebaseChatParams) {
+    const [messages, setMessages] = useState<ChatMessage[]>([])
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<Error | null>(null)
+    const unsubRef = useRef<() => void>()
+    const { user } = useAuthStore()
 
-    const agentLogin = useAuthStore((s) => s.user?.login);
-    const accountcode = useAppStore((s) => s.company?.accountcode);
-
-    const chatId =
-        agentLogin && supervisorId
-            ? CHAT_INDIVIDUAL_PREFIX(agentLogin, supervisorId)
-            : null;
-    const ready = !!(chatId && accountcode);
+    const accountcode = user.accountcode
+    const chatId = CHAT_INDIVIDUAL_PREFIX(agentLogin, user.id)
 
     const loadMessages = useCallback(async () => {
-        if (!ready) return;
         try {
-            setLoading(true);
-            const data = await getAllMessages(accountcode!, chatId!);
-            setMessages(data);
-            const last = data.at(-1);
-            if (last?.id) lastMsgIdRef.current = last.id;
+            setLoading(true)
+            const data = await getAllMessages(accountcode, chatId)
+            setMessages(data)
         } catch (err) {
-            setError(err as Error);
+            setError(err as Error)
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    }, [accountcode, chatId, ready]);
+    }, [accountcode, chatId])
 
     const send = useCallback(
         async (msg: Omit<ChatMessage, "id">) => {
-            if (!ready || !agentLogin) return;
-            await sendMessage(accountcode!, chatId!, agentLogin, msg);
+            await sendMessage(accountcode, chatId, agentLogin, msg)
         },
-        [accountcode, chatId, agentLogin, ready]
-    );
+        [accountcode, chatId]
+    )
 
     const markAsRead = useCallback(
         async (messageId: string) => {
-            if (!ready) return;
-            await markMessageAsRead(
-                accountcode!,
-                agentLogin!,
-                chatId!,
-                messageId
-            );
+            await markMessageAsRead(accountcode, chatId, messageId)
         },
-        [accountcode, agentLogin, chatId, ready]
-    );
+        [accountcode, chatId]
+    )
 
     useEffect(() => {
-        if (!ready || !autoSubscribe) return;
+        if (!autoSubscribe) return;
 
         let isMounted = true;
-        setLoading(true);
-
-        const unsubscribe = subscribeToMessages(
-            accountcode!,
-            chatId!,
-            (msgs) => {
-                if (!isMounted) return;
-                setMessages(msgs);
-
-                // Detectar última mensagem e acionar onNewMessage se for nova e não do próprio agente
-                const last = msgs.at(-1);
-                if (!last) return;
-
-                const changed = lastMsgIdRef.current !== last.id;
-                if (changed) {
-                    lastMsgIdRef.current = last.id;
-                    const isFromAgent =
-                        (last as any).senderLogin === agentLogin;
-                    if (!isFromAgent && onNewMessage) onNewMessage(last);
-                }
-            },
-            (err) => {
-                if (isMounted) setError(err as Error);
-            }
-        );
+        const unsubscribe = subscribeToMessages(accountcode, chatId, (msgs) => {
+            if (isMounted) setMessages(msgs);
+        }, (err) => {
+            if (isMounted) setError(err as Error);
+        });
 
         unsubRef.current = unsubscribe;
+        setLoading(true);
 
-        // opcional: carregar histórico inicial
         loadMessages().finally(() => {
             if (isMounted) setLoading(false);
         });
@@ -113,15 +66,7 @@ export function useFirebaseChat({
             isMounted = false;
             unsubscribe();
         };
-    }, [
-        ready,
-        accountcode,
-        chatId,
-        autoSubscribe,
-        loadMessages,
-        agentLogin,
-        onNewMessage,
-    ]);
+    }, [accountcode, chatId, autoSubscribe, loadMessages]);
 
     return {
         messages,
@@ -130,5 +75,5 @@ export function useFirebaseChat({
         send,
         markAsRead,
         refresh: loadMessages,
-    };
+    }
 }

@@ -1,28 +1,34 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { create } from "zustand"
+import { persist } from "zustand/middleware"
 
 interface CoreStore {
-    isStatsVisible: boolean;
-    toggleStats: () => void;
-    clear: () => void;
+    isStatsVisible: boolean
+    isStatsPinned: boolean
+    isHeaderVisible: boolean
+    toggleStats: () => void
+    setStatsPinned: (value: boolean) => void
+    toggleHeader: () => void
 }
 
 export const useCoreStore = create<CoreStore>()(
     persist(
         (set) => ({
-            isStatsVisible: true,
+            isStatsVisible: false,
+            isStatsPinned: false,
+            isHeaderVisible: true,
             toggleStats: () =>
                 set((state) => ({ isStatsVisible: !state.isStatsVisible })),
-            clear: () => {
-                set({ isStatsVisible: true });
-                localStorage.removeItem("core-store");
-            },
+            setStatsPinned: (value) => set({ isStatsPinned: value }),
+            toggleHeader: () =>
+                set((state) => ({ isHeaderVisible: !state.isHeaderVisible })),
         }),
         {
-            name: "core-store",
+            name: "core-store", // chave usada no localStorage
             partialize: (state) => ({
                 isStatsVisible: state.isStatsVisible,
+                isStatsPinned: state.isStatsPinned,
+                isHeaderVisible: state.isHeaderVisible,
             }),
         }
     )
-);
+)
