@@ -5,8 +5,8 @@ import {
     PauseRequest,
     respondPauseRequest,
 } from "@/lib/firebase/realtime/pause/request";
-import { listProfileRequests } from "@/lib/firebase/firestore/agents/profiles";
-import { PauseRequestList } from "@/lib/firebase/firestore/agents/profiles/types";
+import { listProfileRequests } from "@/lib/firebase/firestore/profile/agents";
+import { PauseRequestList } from "@/lib/firebase/firestore/profile/agents/types";
 import { useAuthStore } from "@/store/authStore";
 
 interface UsePauseRequestsOptions {

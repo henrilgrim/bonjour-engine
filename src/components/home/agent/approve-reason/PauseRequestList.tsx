@@ -6,7 +6,7 @@ import {
     statusLabel,
     toDateSafe,
 } from "./helpers";
-import type { PauseRequestList as PauseRequestType } from "@/lib/firebase/firestore/agents/profiles/types";
+import type { PauseRequestList as PauseRequestType } from "@/lib/firebase/firestore/profile/agents/types";
 
 export function PauseRequestList({
     requests,

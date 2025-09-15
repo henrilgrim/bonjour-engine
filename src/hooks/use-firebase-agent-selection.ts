@@ -4,8 +4,8 @@ import {
     getSelectedAgents,
     saveSelectedAgents,
     clearSelectedAgents,
-} from "@/lib/firebase/firestore/agents/profile";
-import { AgentProfile } from "@/lib/firebase/firestore/agents/profile/types";
+} from "@/lib/firebase/firestore/profile/agents";
+import { AgentProfile } from "@/lib/firebase/firestore/profile/agents/types";
 import { toast } from "@/hooks/use-toast";
 
 export function useFirebaseAgentSelection() {

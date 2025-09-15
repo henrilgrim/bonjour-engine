@@ -20,7 +20,7 @@ import {
 } from "./helpers";
 import { SinglePauseRequest } from "./SinglePauseRequest";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { PauseRequestList as PauseRequestType } from "@/lib/firebase/firestore/agents/profiles/types";
+import type { PauseRequestList as PauseRequestType } from "@/lib/firebase/firestore/profile/agents/types";
 import { PauseRequestList } from "./PauseRequestList";
 import { AgentView } from "@/hooks/use-realtime-agents";
 import { Textarea } from "@/components/ui/textarea";
