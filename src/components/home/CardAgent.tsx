@@ -20,6 +20,7 @@ type CardAgentProps = {
     isSelected: boolean;
     onSelect: (selected: boolean) => void;
     onDialogClose?: () => void;
+    autoOpenDialog?: "chat" | "pause-requests";
 };
 
 function useUnreadForAgentCard(agentLogin: string | undefined) {
@@ -56,6 +57,7 @@ export default function CardAgent({
     isSelected,
     onSelect,
     onDialogClose,
+    autoOpenDialog,
 }: CardAgentProps) {
     const [dialogChatOpen, setDialogChatOpen] = useState(false);
     const [dialogReasonOpen, setDialogReasonOpen] = useState(false);
@@ -70,6 +72,15 @@ export default function CardAgent({
     
     // Verificar se há uma solicitação pendente
     const hasPendingPauseRequest = pauseRequest && pauseRequest.status === "pending";
+    
+    // Efeito para abrir diálogo automaticamente baseado na prop autoOpenDialog
+    useEffect(() => {
+        if (autoOpenDialog === "chat") {
+            setDialogChatOpen(true);
+        } else if (autoOpenDialog === "pause-requests") {
+            setDialogReasonOpen(true);
+        }
+    }, [autoOpenDialog]);
 
     const computedUnread = useUnreadForAgentCard(
         messageCount == null ? ag.login : undefined

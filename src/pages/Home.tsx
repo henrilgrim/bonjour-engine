@@ -242,6 +242,11 @@ export default function HomePage() {
                                         setSelectedOpenChild(undefined);
                                         clearAgentCount(ag.login);
                                     }}
+                                    autoOpenDialog={
+                                        selectedId === ag.id
+                                            ? selectedOpenChild
+                                            : undefined
+                                    }
                                 />
                             ))}
                         </div>
