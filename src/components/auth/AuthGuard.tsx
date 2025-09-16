@@ -16,7 +16,7 @@ export default function AuthGuard({ children, requireAuth = true, redirectTo }: 
 	useEffect(() => {
 		if (loading) return
 		if (requireAuth && !isAuthenticated) navigate(redirectTo || '/login', { replace: true })
-		else if (!requireAuth && isAuthenticated) navigate(redirectTo || '/home', { replace: true })
+		else if (!requireAuth && isAuthenticated) navigate(redirectTo || '/select-dash', { replace: true })
 	}, [isAuthenticated, loading, requireAuth, redirectTo, navigate])
 
 	if (loading) {

@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-APP_NAME="gestor-pxtalk"
-PORT=9595
+APP_NAME="monitor-pxtalk"
+PORT=9191
 
 install_deps() {
   if [ -f package-lock.json ]; then

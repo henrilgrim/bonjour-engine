@@ -1,4 +1,15 @@
 /**
+ * API Types
+ * 
+ * Define todos os tipos relacionados às APIs do sistema.
+ * Centraliza interfaces de request/response para manter consistência.
+ */
+
+import { User } from '@/types/user'
+
+// ============= BASE TYPES =============
+
+/**
  * Resposta padrão das APIs
  */
 export interface BaseApiResponse<T = any> {

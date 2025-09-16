@@ -24,7 +24,7 @@ export function useQueues(auto = true) {
             fetchedRef.current = token
             fetchAll(token)
         }
-    }, [auto, token, items.length, fetchAll]) // ← dependências corretas
+    }, []) // ← agora depende do tamanho de items
 
     return {
         items,

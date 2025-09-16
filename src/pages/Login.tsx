@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Lock, User, Eye, EyeOff } from "lucide-react"
 import { useAuthStore } from "@/store/authStore"
 import { useToast } from "@/hooks/use-toast"
-import { loginInRTDB } from "@/lib/firebase/realtime/online"
 
 export default function LoginPage() {
 	const navigate = useNavigate()
@@ -35,12 +34,7 @@ export default function LoginPage() {
 
 		try {
 			const { error, message } = await useAuthStore.getState().login({ login: formData.login.trim(), password: formData.password })
-			if (!error) {
-				const user = useAuthStore.getState().user
-				
-				if (user) await loginInRTDB({ user })
-				navigate("/agent-selection", { replace: true })
-			}
+			if (!error) navigate("/select-dash", { replace: true })
 			else toast({ variant: "destructive", title: "Erro ao fazer login", description: message || "Verifique suas credenciais e tente novamente." })
 		} catch (err: any) {
 			console.log(err)

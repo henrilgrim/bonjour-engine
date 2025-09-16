@@ -1,7 +1,15 @@
+/**
+ * Hooks de Autenticação
+ * 
+ * Hooks customizados para operações de autenticação com APIs.
+ * Integra com o Zustand store para gerenciamento de estado.
+ */
+
 import { useState, useCallback } from 'react'
 import { useAuthStore } from '@/store/authStore'
+import { useMonitoringDashStore } from '@/store/monitoringDashStore'
 import { useQueuesStore } from '@/store/queuesStore'
-import { logoutInRTDB } from '@/lib/firebase/realtime/online'
+import { logoutFirebase } from '@/lib/firebase/functions/auth'
 
 /**
  * Hook para logout do usuário
@@ -19,29 +27,27 @@ import { logoutInRTDB } from '@/lib/firebase/realtime/online'
 export function useLogout() {
 	const [isLoading, setIsLoading] = useState(false)
 	const authStore = useAuthStore()
+	const monitoringDashStore = useMonitoringDashStore()
 	const queuesStore = useQueuesStore()
-	const user = authStore.user
 
-	const logout = useCallback(async (opts?: { keepAnonymous?: boolean }) => {
+	const logout = useCallback(async () => {
 		setIsLoading(true)
-
 		try {
+			await logoutFirebase({ keepAnonymous: false })
+
 			authStore.clear()
+			monitoringDashStore.clear()
 			queuesStore.clear()
-			await logoutInRTDB({ user_id: user.id, accountcode: user.accountcode })
 		} catch (error) {
 			console.error('Logout error:', error)
 
 			authStore.clear()
+			monitoringDashStore.clear()
 			queuesStore.clear()
-			try { await logoutInRTDB({ user_id: user.id, accountcode: user.accountcode }) } catch { }
 		} finally {
 			setIsLoading(false)
 		}
-	}, [authStore])
+	}, [authStore, monitoringDashStore, queuesStore])
 
-	return {
-		logout,
-		isLoading,
-	}
+	return { logout, isLoading }
 }

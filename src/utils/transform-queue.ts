@@ -1,3 +1,5 @@
+import { PxFila } from "@/lib/repos/monitoring-dash-repo"
+
 type Agente = {
     dataevento: string
     interface: string
@@ -47,19 +49,20 @@ const STATUS_LABELS: Record<string, string> = {
     "8": "Em espera",
 }
 
-function filtrarFilas(dados: ResultadoAgrupado): ResultadoAgrupado {
-    const filtrado: ResultadoAgrupado = {}
+function filtrarFilas(dados: QueueStatusMap, filas: PxFila[] | undefined): QueueStatusMap {
+    const idsPermitidos = new Set(filas?.map(f => f.id))
+    const filtrado: QueueStatusMap = {}
 
-    for (const [queueId, statusList] of Object.entries(dados)) {
-        const statusComAgente = statusList.map((s) => ({ ...s, agentes: s.agentes.filter(Boolean) })).filter((s) => s.agentes.length > 0)
-        const totalAgentes = statusComAgente.reduce((acc, s) => acc + s.agentes.length, 0)
-        if (totalAgentes > 0) { filtrado[queueId] = statusComAgente }
+    for (const queueId of Object.keys(dados)) {
+        if (idsPermitidos.has(queueId)) {
+            filtrado[queueId] = dados[queueId]
+        }
     }
 
     return filtrado
 }
 
-export function reorganizarEAgrouparQueueMemberStatus(payload: PayloadItem[]): ResultadoAgrupado {
+export function reorganizarEAgrouparQueueMemberStatus(payload: PayloadItem[], filas: PxFila[] | undefined): ResultadoAgrupado {
     const resultado: ResultadoAgrupado = {}
 
     for (const grupo of payload) {
@@ -68,20 +71,35 @@ export function reorganizarEAgrouparQueueMemberStatus(payload: PayloadItem[]): R
         for (const agente of grupo.data) {
             const queueId = agente.queue
 
-            if (!queueId) continue
-            if (agente.membername.split(":").length < 2) continue
-            if (!resultado[queueId]) { resultado[queueId] = [] }
+            if (!resultado[queueId]) {
+                resultado[queueId] = []
+            }
 
+            // Validação: ignora agentes sem nome completo
+            if (agente.membername.split(":").length < 2) {
+                continue
+            }
+
+            // --- 🚨 Regra especial: status 1 + paused 1 => 999 ---
             let status = statusOriginal
             let label = STATUS_LABELS[statusOriginal] ?? `Status ${statusOriginal}`
-            if (status === "1" && agente.paused === "1") { status = "999"; label = "Pausado"; }
+
+            if (status === "1" && agente.paused === "1") {
+                status = "999"
+                label = "Pausado"
+            }
 
             let statusEntry = resultado[queueId].find((s) => s.status === status)
-            if (!statusEntry) { statusEntry = { status, label, agentes: [] }; resultado[queueId].push(statusEntry); }
+            if (!statusEntry) {
+                statusEntry = { status, label, agentes: [] }
+                resultado[queueId].push(statusEntry)
+            }
 
             statusEntry.agentes.push(agente)
         }
     }
 
-    return filtrarFilas(resultado)
+    let resultadoFiltrado = filtrarFilas(resultado, filas)
+
+    return resultadoFiltrado
 }
