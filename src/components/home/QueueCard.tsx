@@ -128,35 +128,41 @@ export default function QueueCard({ name, totalAgents, activeAgents, filaData, o
 			</div>
 
 			{/* Totalizadores */}
-			<div className="grid grid-cols-2 gap-2 text-center text-xs mb-4">
-				<div className="bg-muted rounded-lg p-2">
-					<PhoneIncoming className="w-4 h-4 mx-auto" />
-					<div className="text-muted-foreground">Atend.</div>
-					<div className="font-semibold">{filaData.totalizadores?.recebidasAtendidas}</div>
+			{/* Totalizadores */}
+			<div className="grid grid-cols-2 gap-3 text-center mb-6">
+				<div className="bg-muted rounded-lg p-3 flex flex-col items-center">
+					<PhoneIncoming className="w-6 h-6 mb-1 text-green-600" />
+					<div className="text-xs text-muted-foreground">Atendidas</div>
+					<div className="text-3xl font-bold text-green-700">
+						{filaData.totalizadores?.recebidasAtendidas}
+					</div>
 				</div>
 
-				<div className="bg-muted rounded-lg p-2">
-					<PhoneMissed className="w-4 h-4 mx-auto" />
-					<div className="text-muted-foreground">Aband.</div>
-					<div className="font-semibold">{filaData.totalizadores?.recebidasAbandonadas}</div>
+				<div className="bg-muted rounded-lg p-3 flex flex-col items-center">
+					<PhoneMissed className="w-6 h-6 mb-1 text-red-600" />
+					<div className="text-xs text-muted-foreground">Abandonadas</div>
+					<div className="text-3xl font-bold text-red-700">
+						{filaData.totalizadores?.recebidasAbandonadas}
+					</div>
 				</div>
 
-				<div className="bg-muted rounded-lg p-2">
-					<Clock className="w-4 h-4 mx-auto" />
-					<div className="text-muted-foreground">TMA</div>
-					<div className="font-semibold">
+				<div className="bg-muted rounded-lg p-3 flex flex-col items-center">
+					<Clock className="w-6 h-6 mb-1 text-blue-600" />
+					<div className="text-xs text-muted-foreground">TMA</div>
+					<div className="text-3xl font-bold text-blue-700">
 						{filaData.totalizadores?.mediaTMA.toFixed(1)}s
 					</div>
 				</div>
 
-				<div className="bg-muted rounded-lg p-2">
-					<Timer className="w-4 h-4 mx-auto" />
-					<div className="text-muted-foreground">TME</div>
-					<div className="font-semibold">
+				<div className="bg-muted rounded-lg p-3 flex flex-col items-center">
+					<Timer className="w-6 h-6 mb-1 text-purple-600" />
+					<div className="text-xs text-muted-foreground">TME</div>
+					<div className="text-3xl font-bold text-purple-700">
 						{filaData.totalizadores?.mediaTME.toFixed(1)}s
 					</div>
 				</div>
 			</div>
+
 
 			{/* Barra de ocupação */}
 			<div className="mb-4">
