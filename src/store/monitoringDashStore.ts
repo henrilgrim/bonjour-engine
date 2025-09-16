@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
-import type { PxDash } from "@/lib/repos/monitoring-dash-repo"
+import type { PxDash } from "@/lib/firebase/firestore/dashboard/types"
 
 interface State {
     dashSelected?: PxDash

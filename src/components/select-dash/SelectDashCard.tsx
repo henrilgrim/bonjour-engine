@@ -1,6 +1,6 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import type { PxDash } from "@/lib/repos/monitoring-dash-repo"
+import type { PxDash } from "@/lib/firebase/firestore/dashboard/types"
 import { useQueues } from "@/hooks/use-queues"
 import { Pencil, Trash } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"

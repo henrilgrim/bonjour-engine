@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import { getApiService } from "@/lib/api/services"
 import { Company, mapCompany } from "@/types/company"
+import { ensureAnonymousSession } from "@/lib/firebase/functions/auth"
 
 export type User = {
 	id: string
@@ -108,6 +109,13 @@ export const useAuthStore = create<AuthState>()(
 						company: empresa,
 						error: null,
 					})
+
+					// Cria sessão anônima no Firebase após login bem-sucedido
+					try {
+						await ensureAnonymousSession()
+					} catch (error) {
+						console.error('Erro ao criar sessão anônima:', error)
+					}
 
 					return { error: false }
 				} catch (err: any) {

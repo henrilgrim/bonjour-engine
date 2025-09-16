@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { Users, Headphones, Clock, Timer, PhoneMissed, PhoneIncoming, User, PauseCircle, UsersRound } from "lucide-react"
-import type { PxFila } from "@/lib/repos/monitoring-dash-repo"
+import type { PxFila } from "@/lib/firebase/firestore/dashboard/types"
 import QueueConfigDialog from "./queue/QueueConfigDialog"
 import { TransformedQueue } from "@/utils/transform-queue-monitoting"
 import QueueInfoDialog from "./queue/QueueInfoDialog"

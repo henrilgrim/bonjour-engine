@@ -1,4 +1,4 @@
-import { PxDash } from "@/lib/repos/monitoring-dash-repo";
+import { PxDash } from "@/lib/firebase/firestore/dashboard/types";
 import { QueueItem } from "@/store/queuesStore";
 import { QueueMapCombinado } from "./another";
 import { AGENT_STATUS } from '@/lib/constants'

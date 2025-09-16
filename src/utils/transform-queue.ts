@@ -1,4 +1,4 @@
-import { PxFila } from "@/lib/repos/monitoring-dash-repo"
+import { PxFila } from "@/lib/firebase/firestore/dashboard/types"
 
 type Agente = {
     dataevento: string
