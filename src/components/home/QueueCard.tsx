@@ -111,15 +111,15 @@ export default function QueueCard({ name, totalAgents, activeAgents, filaData, o
 			style={{ borderColor: hsl("border") }}
 		>
 			{/* Header */}
-			<div className="flex items-center justify-between mb-3">
-				<h3 className="text-sm lg:text-base font-semibold text-foreground flex items-center gap-2 truncate">
-					<Headphones className="w-4 h-4 text-foreground" />
+			<div className="flex items-center justify-between mb-4">
+				<h3 className="text-base lg:text-lg xl:text-xl font-semibold text-foreground flex items-center gap-2 truncate">
+					<Headphones className="w-5 h-5 lg:w-6 lg:h-6 text-foreground" />
 					<span className="truncate">{name}</span>
 				</h3>
 
-				<div className="flex items-center gap-1">
-					<Users className="w-3 h-3 text-muted-foreground" />
-					<span className="text-xs text-muted-foreground">
+				<div className="flex items-center gap-2">
+					<Users className="w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground" />
+					<span className="text-sm lg:text-base font-medium text-muted-foreground">
 						{occupiedAgents}/{totalAgents}
 					</span>
 
@@ -129,35 +129,35 @@ export default function QueueCard({ name, totalAgents, activeAgents, filaData, o
 
 			{/* Totalizadores */}
 			{/* Totalizadores */}
-			<div className="grid grid-cols-2 gap-3 text-center mb-6">
-				<div className="bg-muted rounded-lg p-3 flex flex-col items-center">
-					<PhoneIncoming className="w-6 h-6 mb-1 text-green-600" />
-					<div className="text-xs text-muted-foreground">Atendidas</div>
-					<div className="text-3xl font-bold text-green-700">
+			<div className="grid grid-cols-2 gap-3 lg:gap-4 text-center mb-6">
+				<div className="bg-muted rounded-lg p-3 lg:p-4 flex flex-col items-center">
+					<PhoneIncoming className="w-6 h-6 lg:w-8 lg:h-8 mb-2 text-green-600" />
+					<div className="text-xs lg:text-sm text-muted-foreground mb-1">Atendidas</div>
+					<div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-green-700">
 						{filaData.totalizadores?.recebidasAtendidas}
 					</div>
 				</div>
 
-				<div className="bg-muted rounded-lg p-3 flex flex-col items-center">
-					<PhoneMissed className="w-6 h-6 mb-1 text-red-600" />
-					<div className="text-xs text-muted-foreground">Abandonadas</div>
-					<div className="text-3xl font-bold text-red-700">
+				<div className="bg-muted rounded-lg p-3 lg:p-4 flex flex-col items-center">
+					<PhoneMissed className="w-6 h-6 lg:w-8 lg:h-8 mb-2 text-red-600" />
+					<div className="text-xs lg:text-sm text-muted-foreground mb-1">Abandonadas</div>
+					<div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-red-700">
 						{filaData.totalizadores?.recebidasAbandonadas}
 					</div>
 				</div>
 
-				<div className="bg-muted rounded-lg p-3 flex flex-col items-center">
-					<Clock className="w-6 h-6 mb-1 text-blue-600" />
-					<div className="text-xs text-muted-foreground">TMA</div>
-					<div className="text-3xl font-bold text-blue-700">
+				<div className="bg-muted rounded-lg p-3 lg:p-4 flex flex-col items-center">
+					<Clock className="w-6 h-6 lg:w-8 lg:h-8 mb-2 text-blue-600" />
+					<div className="text-xs lg:text-sm text-muted-foreground mb-1">TMA</div>
+					<div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-blue-700">
 						{filaData.totalizadores?.mediaTMA.toFixed(1)}s
 					</div>
 				</div>
 
-				<div className="bg-muted rounded-lg p-3 flex flex-col items-center">
-					<Timer className="w-6 h-6 mb-1 text-purple-600" />
-					<div className="text-xs text-muted-foreground">TME</div>
-					<div className="text-3xl font-bold text-purple-700">
+				<div className="bg-muted rounded-lg p-3 lg:p-4 flex flex-col items-center">
+					<Timer className="w-6 h-6 lg:w-8 lg:h-8 mb-2 text-purple-600" />
+					<div className="text-xs lg:text-sm text-muted-foreground mb-1">TME</div>
+					<div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-purple-700">
 						{filaData.totalizadores?.mediaTME.toFixed(1)}s
 					</div>
 				</div>
@@ -165,14 +165,14 @@ export default function QueueCard({ name, totalAgents, activeAgents, filaData, o
 
 
 			{/* Barra de ocupação */}
-			<div className="mb-4">
-				<div className="flex justify-between text-xs mb-1">
-					<span className="text-muted-foreground">Agentes Indisponíveis (Ocupados, Em Pausa ou Em Espera)</span>
-					<span className="font-bold" style={{ color: "black" }}>
+			<div className="mb-6">
+				<div className="flex justify-between text-sm lg:text-base mb-2">
+					<span className="text-muted-foreground font-medium">Agentes Indisponíveis (Ocupados, Em Pausa ou Em Espera)</span>
+					<span className="font-bold text-lg lg:text-xl" style={{ color: "black" }}>
 						{isEmpty ? "0%" : `${Math.round(occupiedPct)}%`}
 					</span>
 				</div>
-				<div className="w-full rounded-full h-3 bg-muted overflow-hidden">
+				<div className="w-full rounded-full h-4 lg:h-5 bg-muted overflow-hidden">
 					{!isEmpty && (
 						<div
 							className="h-full transition-all duration-500 relative"
@@ -189,54 +189,54 @@ export default function QueueCard({ name, totalAgents, activeAgents, filaData, o
 
 			{/* Status dos agentes */}
 			<div
-				className="grid grid-cols-4 gap-2 text-center mt-auto pt-3 border-t"
+				className="grid grid-cols-4 gap-2 lg:gap-3 text-center mt-auto pt-4 border-t"
 				style={{ borderColor: hsl("border") }}
 			>
 				<div
 					role="button"
 					tabIndex={0}
-					className="text-xs cursor-pointer rounded-md p-1 hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring"
+					className="text-xs lg:text-sm cursor-pointer rounded-md p-2 lg:p-3 hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
 					onClick={() => openInfoDialogStatus('disponivel')}
 					onKeyDown={(e) => e.key === 'Enter' && openInfoDialogStatus('disponivel')}
 				>
-					<User className="mx-auto h-4 w-4 text-green-600" />
-					<div>Disp.</div>
-					<div className="font-medium">{statusCount.disponivel}</div>
+					<User className="mx-auto h-5 w-5 lg:h-6 lg:w-6 mb-1 text-green-600" />
+					<div className="font-medium mb-1">Disp.</div>
+					<div className="text-lg lg:text-xl font-bold">{statusCount.disponivel}</div>
 				</div>
 				<div
 					role="button"
 					tabIndex={0}
-					className="text-xs cursor-pointer rounded-md p-1 hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring"
+					className="text-xs lg:text-sm cursor-pointer rounded-md p-2 lg:p-3 hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
 					onClick={() => openInfoDialogStatus('ocupado')}
 					onKeyDown={(e) => e.key === 'Enter' && openInfoDialogStatus('ocupado')}
 				>
-					<Headphones className="mx-auto h-4 w-4 text-yellow-600" />
-					<div>Ocup.</div>
-					<div className="font-medium">{statusCount.ocupado}</div>
+					<Headphones className="mx-auto h-5 w-5 lg:h-6 lg:w-6 mb-1 text-yellow-600" />
+					<div className="font-medium mb-1">Ocup.</div>
+					<div className="text-lg lg:text-xl font-bold">{statusCount.ocupado}</div>
 				</div>
 
 				<div
 					role="button"
 					tabIndex={0}
-					className="text-xs cursor-pointer rounded-md p-1 hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring"
+					className="text-xs lg:text-sm cursor-pointer rounded-md p-2 lg:p-3 hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
 					onClick={() => openInfoDialogStatus('pausa')}
 					onKeyDown={(e) => e.key === 'Enter' && openInfoDialogStatus('pausa')}
 				>
-					<PauseCircle className="mx-auto h-4 w-4 text-blue-600" />
-					<div>Pausa</div>
-					<div className="font-medium">{statusCount.pausa}</div>
+					<PauseCircle className="mx-auto h-5 w-5 lg:h-6 lg:w-6 mb-1 text-blue-600" />
+					<div className="font-medium mb-1">Pausa</div>
+					<div className="text-lg lg:text-xl font-bold">{statusCount.pausa}</div>
 				</div>
 
 				<div
 					role="button"
 					tabIndex={0}
-					className="text-xs cursor-pointer rounded-md p-1 hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring"
+					className="text-xs lg:text-sm cursor-pointer rounded-md p-2 lg:p-3 hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
 					onClick={() => openInfoDialogStatus('emEspera')}
 					onKeyDown={(e) => e.key === 'Enter' && openInfoDialogStatus('emEspera')}
 				>
-					<UsersRound className="mx-auto h-4 w-4 text-orange-600" />
-					<div>Espera</div>
-					<div className="font-medium">{statusCount.emEspera}</div>
+					<UsersRound className="mx-auto h-5 w-5 lg:h-6 lg:w-6 mb-1 text-orange-600" />
+					<div className="font-medium mb-1">Espera</div>
+					<div className="text-lg lg:text-xl font-bold">{statusCount.emEspera}</div>
 				</div>
 			</div>
 
