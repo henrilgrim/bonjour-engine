@@ -159,6 +159,7 @@ export default function TrafficLight({ accountcode, totalAgents, busyAgents, pau
 					unsub = subscribeAlertConfig(accountcode, dashId, alertCfg.id, (c) => {
 						if (c) setCfg(normalizeCfg(accountcode, user.id, c))
 					})
+					// Nota: subscribeAlertConfig já registra automaticamente o listener
 				}
 
 			})()

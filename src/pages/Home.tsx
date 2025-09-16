@@ -66,6 +66,7 @@ export default function HomePage() {
             (err) => console.error("Erro listener:", err),
         )
 
+        // Nota: listenCompanyQueues e listenCompanyTotalizersQueues já registram automaticamente os listeners
         return () => { off(); off2() }
     }, [dashSelected?.accountcode, dashSelected?.filas])
 

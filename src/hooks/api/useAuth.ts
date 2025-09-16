@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useMonitoringDashStore } from '@/store/monitoringDashStore'
 import { useQueuesStore } from '@/store/queuesStore'
 import { logoutFirebase } from '@/lib/firebase/functions/auth'
+import { clearAllListeners } from '@/lib/firebase/listeners-manager'
 
 /**
  * Hook para logout do usuário
@@ -33,6 +34,9 @@ export function useLogout() {
 	const logout = useCallback(async () => {
 		setIsLoading(true)
 		try {
+			// Remove todos os listeners Firebase primeiro
+			clearAllListeners()
+			
 			await logoutFirebase({ keepAnonymous: false })
 
 			authStore.clear()
@@ -41,6 +45,8 @@ export function useLogout() {
 		} catch (error) {
 			console.error('Logout error:', error)
 
+			// Mesmo com erro, limpa os stores e listeners
+			clearAllListeners()
 			authStore.clear()
 			monitoringDashStore.clear()
 			queuesStore.clear()

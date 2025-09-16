@@ -86,6 +86,7 @@ export default function SelectDashDialog({ mode, initialDash, accountcode, queue
                 (dashboards) => { setPublicDashboards(dashboards); setDashboardsLoading(false) },
                 (error) => { console.error("Erro ao carregar dashboards:", error); setDashboardsLoading(false) }
             )
+            // Nota: subscribePublicDashboards já registra automaticamente o listener
             return () => unsubscribe()
         }
     }, [mode, accountcode, open])

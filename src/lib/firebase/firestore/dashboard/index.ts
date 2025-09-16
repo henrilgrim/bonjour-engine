@@ -3,6 +3,7 @@ import { alertsConverter, dashboardConverter } from "./converter"
 import { getMonitorPanelDoc } from ".."
 import { FilaConfig, PxAlertConfig, PxDash, WebhookMethod } from "./types"
 import { DEFAULT_SOUND_REPEAT_MS, DEFAULT_WEBHOOK_REPEAT_MS } from "@/constants"
+import { registerFirestoreListener } from "../../listeners-manager"
 
 export function getDashboardsCollection(accountcode: string) {
     return collection(getMonitorPanelDoc(accountcode), "dashboards").withConverter(dashboardConverter)
@@ -34,7 +35,7 @@ export function subscribeDashboards(accountcode: string, opts: { accountcode?: s
     if (opts?.userId) base = query(base, where("createdBy", "==", opts.userId))
     base = query(base, orderBy("nome"))
 
-    return onSnapshot(base, (snap) => {
+    const unsub = onSnapshot(base, (snap) => {
         const allDashes = snap.docs.map((d) => d.data() as PxDash)
 
         const filtered = opts?.userId
@@ -43,6 +44,9 @@ export function subscribeDashboards(accountcode: string, opts: { accountcode?: s
 
         onNext(filtered)
     }, (err) => onError?.(err))
+
+    registerFirestoreListener(unsub)
+    return unsub
 }
 
 export function subscribePublicDashboards(accountcode: string, onNext: (items: PxDash[]) => void, onError?: (e: unknown) => void): () => void {
@@ -57,7 +61,9 @@ export function subscribePublicDashboards(accountcode: string, onNext: (items: P
         orderBy("nome")
     )
 
-    return onSnapshot(base, (snap) => onNext(snap.docs.map((d) => d.data() as PxDash)), (err) => onError?.(err))
+    const unsub = onSnapshot(base, (snap) => onNext(snap.docs.map((d) => d.data() as PxDash)), (err) => onError?.(err))
+    registerFirestoreListener(unsub)
+    return unsub
 }
 
 export async function createDashboard(payload: PxDash): Promise<string> {
@@ -201,7 +207,10 @@ export async function updateAlertConfig(accountcode: string, dashboardId: string
 export function subscribeAlertConfig(accountcode: string, dashboardId: string, alertId: string, onNext: (cfg: PxAlertConfig | null) => void, onError?: (e: unknown) => void) {
     const ref = getAlertDoc(accountcode, dashboardId, alertId)
 
-    return onSnapshot(ref, (snap) => onNext(snap.exists() ? (snap.data() as PxAlertConfig) : null),
+    const unsub = onSnapshot(ref, (snap) => onNext(snap.exists() ? (snap.data() as PxAlertConfig) : null),
         (err) => onError?.(err)
     )
+    
+    registerFirestoreListener(unsub)
+    return unsub
 }

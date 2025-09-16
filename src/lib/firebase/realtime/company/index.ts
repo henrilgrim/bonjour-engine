@@ -1,6 +1,7 @@
 import { onChildAdded, onChildChanged, onChildRemoved } from "firebase/database"
 import { createRtdbContext } from "@/lib/firebase/realtime"
 import { Unsubscribe } from "firebase/auth";
+import { registerRealtimeListener } from "../../listeners-manager"
 
 type QueueData = Record<string, any>
 
@@ -22,7 +23,9 @@ export function listenCompanyQueues(accountcode: string, handler: (queues: { id:
         onChildRemoved(baseRef, (snap) => { delete queues[snap.key!]; emit() }, (e) => onError?.(e))
     )
 
-    return () => unsubs.forEach((u) => u())
+    const unsubscriber = () => unsubs.forEach((u) => u())
+    registerRealtimeListener(unsubscriber)
+    return unsubscriber
 }
 
 export function listenCompanyTotalizersQueues(accountcode: string, handler: (queues: { id: string; data: any }[]) => void, onError?: (e: unknown) => void): () => void {
@@ -43,5 +46,7 @@ export function listenCompanyTotalizersQueues(accountcode: string, handler: (que
         onChildRemoved(baseRef, (snap) => { delete queues[snap.key!]; emit() }, (e) => onError?.(e))
     )
 
-    return () => unsubs.forEach((u) => u())
+    const unsubscriber = () => unsubs.forEach((u) => u())
+    registerRealtimeListener(unsubscriber)
+    return unsubscriber
 }
