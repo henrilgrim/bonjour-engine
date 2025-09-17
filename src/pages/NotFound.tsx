@@ -41,10 +41,6 @@ export default function NotFound() {
 							Início
 						</Link>
 					</Button>
-
-					<Button asChild variant="outline" className="gap-2">
-						<Link to="/select-dash">Selecionar dashboard</Link>
-					</Button>
 				</div>
 			</div>
 		</div>

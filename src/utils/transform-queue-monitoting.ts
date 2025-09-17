@@ -1,8 +1,7 @@
-import { PxDash } from "@/lib/firebase/firestore/dashboard/types";
 import { QueueItem } from "@/store/queuesStore";
 import { QueueMapCombinado } from "./another";
 import { AGENT_STATUS } from '@/lib/constants'
-const { DISPONIVEL, EM_USO, OCUPADO, TOCANDO, EM_USO_TOCANDO, EM_ESPERA, EM_PAUSA } = AGENT_STATUS;
+const { DISPONIVEL, EM_USO, OCUPADO, INDISPONIVEL, TOCANDO, EM_USO_TOCANDO, EM_ESPERA, EM_PAUSA } = AGENT_STATUS;
 
 type Agent = {
     dataevento: string;
@@ -35,13 +34,11 @@ export type TransformedQueue = {
         recebidasAtendidas: number;
     };
 
-    configuracao?: any; // mantido se usado no restante da app
+    configuracao?: any;
 }
 
-
-export function transformarQueuesMonitoring(combined: QueueMapCombinado, filas: QueueItem[], dashSelected: PxDash): TransformedQueue[] {
+export function transformarQueuesMonitoring(combined: QueueMapCombinado, filas: QueueItem[]): TransformedQueue[] {
     const filaMap = new Map(filas.map(f => [f.id, f]))
-    const filaMapDash = new Map(dashSelected.filas?.map(f => [f.id, f]))
 
     return Object.entries(combined).map(([queueId, data]) => {
         const { queueMemberStatus, totalizadores } = data
@@ -49,6 +46,7 @@ export function transformarQueuesMonitoring(combined: QueueMapCombinado, filas: 
         let available = 0
         let busy = 0
         let paused = 0
+        let unavailable = 0
 
         queueMemberStatus.forEach(({ status, agentes }) => {
             switch (status) {
@@ -65,21 +63,16 @@ export function transformarQueuesMonitoring(combined: QueueMapCombinado, filas: 
                 case EM_PAUSA:
                     paused += agentes.length
                     break
-                // STATUS_INDISPONIVEL é ignorado
+                case INDISPONIVEL:
+                    unavailable += agentes.length
+                    break
+                default:
+                    break
             }
         })
 
-        const total = available + busy + paused
+        const total = available + busy + paused + unavailable
         const fila = filaMap.get(queueId)
-        const filaConfig = filaMapDash.get(queueId) || {
-            configuracao: {
-                estados: {
-                    alerta: "65",
-                    critico: "80"
-                },
-                fila_importante: false
-            }
-        }
 
         return {
             id: queueId,
@@ -88,6 +81,7 @@ export function transformarQueuesMonitoring(combined: QueueMapCombinado, filas: 
             availableAgents: available,
             busyAgents: busy,
             pausedAgents: paused,
+            unavailableAgents: unavailable,
             queueSize: 0,
 
             queueMemberStatus: queueMemberStatus,
@@ -98,8 +92,6 @@ export function transformarQueuesMonitoring(combined: QueueMapCombinado, filas: 
                 recebidasAbandonadas: totalizadores.recebidas_abandonadas_na_fila,
                 recebidasAtendidas: totalizadores.recebidas_atendidas_na_fila,
             } : undefined,
-
-            configuracao: filaConfig.configuracao || {},
         }
     })
 }

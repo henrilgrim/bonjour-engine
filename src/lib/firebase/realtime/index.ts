@@ -1,44 +1,60 @@
-import { ref } from "firebase/database"
-import { database } from "@/config/firebase"
+import { ref } from "firebase/database";
+import { database } from "@/config/firebase";
 
-// Prefixo base do caminho no Realtime Database
-const BASE_PATH_PREFIX = "pxtalk_call_center_module"
+// Paths helpers
+export const rtdbPaths = {
+    base: (accountcode: string) => `pxtalk_call_center_module/${accountcode}`,
+    managerPanel: (accountcode: string) =>
+        `${rtdbPaths.base(accountcode)}/manager_panel`,
+    agentPanel: (accountcode: string) =>
+        `${rtdbPaths.base(accountcode)}/agent_panel`,
+    monitorPanel: (accountcode: string) =>
+        `${rtdbPaths.base(accountcode)}/monitor_panel`,
 
-// Validações
-const validateAccountCode = (accountcode: string) => {
-	if (!accountcode) throw new Error("Parâmetro 'accountcode' é obrigatório.")
-}
+    onlines: (accountcode: string) =>
+        `${rtdbPaths.managerPanel(accountcode)}/onlines`,
+    userOnline: (accountcode: string, userId: string) =>
+        `${rtdbPaths.onlines(accountcode)}/${userId}`,
 
-const validateUserId = (userId: string) => {
-	if (!userId) throw new Error("Parâmetro 'userId' é obrigatório.")
-}
+    agentOnlines: (accountcode: string) =>
+        `${rtdbPaths.agentPanel(accountcode)}/onlines`,
+    pauses: (accountcode: string) =>
+        `${rtdbPaths.agentPanel(accountcode)}/pauses`,
+    pauseRequest: (accountcode: string, agentLogin: string) =>
+        `${rtdbPaths.pauses(accountcode)}/${agentLogin}`,
 
-// Fábrica de contexto RTDB por accountcode
-export const createRtdbContext = (accountcode: string) => {
-	validateAccountCode(accountcode)
+    queueMemberStatus: (accountcode: string) =>
+        `QueueMemberStatus/${accountcode}`,
+    totalizadoresByQueue: (accountcode: string) =>
+        `totalizadoresByQueue/${accountcode}`,
 
-	const basePath = `${BASE_PATH_PREFIX}/${accountcode}`
-	const monitorPanelPath = `${basePath}/monitor_panel`
+    notifications: (accountcode: string) =>
+        `${rtdbPaths.managerPanel(accountcode)}/notifications`,
+    notification: (accountcode: string, notificationId: string) =>
+        `${rtdbPaths.notifications(accountcode)}/${notificationId}`,
+};
 
-	const paths = {
-		managerPanel: () => `${basePath}/manager_panel`,
-		agentPanel: () => `${basePath}/agent_panel`,
-		monitorPanel: () => monitorPanelPath,
-		usersOnline: () => `${monitorPanelPath}/onlines`,
-		userOnline: (userId: string) => {
-			validateUserId(userId)
-			return `${monitorPanelPath}/onlines/${userId}`
-		},
-		queueMemberStatus: (accountcode: string) => `QueueMemberStatus/${accountcode}`,
-		totalizadoresByQueue: (accountcode: string) => `totalizadoresByQueue/${accountcode}`,
-	}
+// Refs helpers
+export const rtdbRefs = {
+    onlines: (accountcode: string) =>
+        ref(database, rtdbPaths.onlines(accountcode)),
+    userOnline: (accountcode: string, userId: string) =>
+        ref(database, rtdbPaths.userOnline(accountcode, userId)),
 
-	const refs = {
-		usersOnline: () => ref(database, paths.usersOnline()),
-		userOnline: (userId: string) => ref(database, paths.userOnline(userId)),
-		queueMemberStatus: (accountcode: string) => ref(database, paths.queueMemberStatus(accountcode)),
-		totalizadoresByQueue: (accountcode: string) => ref(database, paths.totalizadoresByQueue(accountcode))
-	}
+    agentOnlines: (accountcode: string) =>
+        ref(database, rtdbPaths.agentOnlines(accountcode)),
+    pauses: (accountcode: string) =>
+        ref(database, rtdbPaths.pauses(accountcode)),
+    pauseRequests: (accountcode: string, agentLogin: string) =>
+        ref(database, rtdbPaths.pauseRequest(accountcode, agentLogin)),
 
-	return { paths, refs }
-}
+    queueMemberStatus: (accountcode: string) =>
+        ref(database, rtdbPaths.queueMemberStatus(accountcode)),
+    totalizadoresByQueue: (accountcode: string) =>
+        ref(database, rtdbPaths.totalizadoresByQueue(accountcode)),
+
+    notifications: (accountcode: string) =>
+        ref(database, rtdbPaths.notifications(accountcode)),
+    notification: (accountcode: string, notificationId: string) =>
+        ref(database, rtdbPaths.notification(accountcode, notificationId)),
+};

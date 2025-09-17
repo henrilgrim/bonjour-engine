@@ -1,221 +1,262 @@
-import { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import DashboardStats from "@/components/home/DashboardStats"
-import { listenCompanyQueues, listenCompanyTotalizersQueues } from "@/lib/firebase/realtime/company"
-import { useMonitoringDashStore } from "@/store/monitoringDashStore"
-import { QueueStatusMap, reorganizarEAgrouparQueueMemberStatus } from "@/utils/transform-queue"
-import { transformarQueuesMonitoring } from "@/utils/transform-queue-monitoting"
-import { useQueuesStore } from "@/store/queuesStore"
-import { combinarQueueStatusETotalizadores, QueueMapCombinado } from "@/utils/another"
-import QueueCard from "@/components/home/QueueCard"
-import TrafficLight from "@/components/home/TrafficLight"
-import { useUiTheme } from "@/contexts/ui-theme"
+import { useState, useMemo } from "react";
+import {
+    Monitor,
+    AlertTriangle,
+    RefreshCcw,
+    ChevronUp,
+    ChevronDown,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useRealtimeAgents } from "@/hooks/use-realtime-agents";
+import { useFirebaseAgentSelection } from "@/hooks/use-firebase-agent-selection";
+
+import { useCoreStore } from "@/store/coreStore";
+import { PauseRequestNotifications } from "@/components/notifications/PauseRequestNotifications";
+import { useSystemNotifications } from "@/hooks/use-system-notifications";
+
+import { useAgentMessageCounts } from "@/hooks/use-agent-message-counts";
+import { useAuthStore } from "@/store/authStore";
+
+import DashboardStats from "@/components/home/DashboardStats";
+import CardAgent from "@/components/home/CardAgent";
 
 export default function HomePage() {
-    const navigate = useNavigate()
-    const { dashSelected } = useMonitoringDashStore()
+    const { user } = useAuthStore();
+    const { orderedAgents, stats, loading, error, refresh } =
+        useRealtimeAgents();
+    const { messageCounts, clearAgentCount } = useAgentMessageCounts();
+    const { selectedAgents, hasSelection } = useFirebaseAgentSelection();
 
-    useEffect(() => {
-        if (!dashSelected) navigate("/select-dash", { replace: true })
-    }, [dashSelected, navigate])
+    // Sistema de notificações em background
+    useSystemNotifications({
+        accountcode: user?.accountcode || "",
+        enabled: !!user?.accountcode,
+    });
 
-    if (!dashSelected) return null
+    // === controle de seleção única e qual diálogo abrir ===
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [selectedOpenChild, setSelectedOpenChild] = useState<
+        "chat" | "pause-requests" | undefined
+    >(undefined);
 
-    // Consome do contexto (em vez de controlar aqui):
-    const { isMonitorMode: isTV } = useUiTheme()
+    const isVisible = useCoreStore((s) => s.isStatsVisible);
+    const isHeaderVisible = useCoreStore((s) => s.isHeaderVisible);
+    const toggle = useCoreStore((s) => s.toggleStats);
+    const toggleHeader = useCoreStore((s) => s.toggleHeader);
 
-    const [cols, setCols] = useState<1 | 2 | 3 | 4>(3)
-    useEffect(() => {
-        const saved = localStorage.getItem("queueGridColsFixed")
-        if (["1", "2", "3", "4"].includes(saved || "")) {
-            setCols(Number(saved) as 1 | 2 | 3 | 4)
+    // abrir via notificações já apontando para o diálogo correto
+    const handleOpenAgentByLogin = (
+        agentLogin: string,
+        initialChild: "chat" | "pause-requests"
+    ) => {
+        const agent = orderedAgents.find(
+            (ag) => ag.id === agentLogin || ag.login === agentLogin
+        );
+        if (!agent) return;
+        if (messageCounts[agent.login]) clearAgentCount(agent.login);
+
+        // seleciona exclusivamente e agenda qual child abrir
+        setSelectedId(agent.id);
+        setSelectedOpenChild(initialChild);
+    };
+
+    const filteredAgents = useMemo(() => {
+        // Se há agentes selecionados, filtrar apenas eles
+        if (hasSelection && selectedAgents.length > 0) {
+            const selectedIds = new Set(
+                selectedAgents.map((agent) => agent.id)
+            );
+            return orderedAgents.filter((agent) => selectedIds.has(agent.id));
         }
-    }, [])
-    useEffect(() => {
-        localStorage.setItem("queueGridColsFixed", String(cols))
-    }, [cols])
+        // Caso contrário, mostrar todos
+        return orderedAgents;
+    }, [orderedAgents, hasSelection, selectedAgents]);
 
-    const [queuesMonitoringCombined, setQueuesMonitoringCombined] = useState<QueueMapCombinado>({})
-    const { items: filasStore } = useQueuesStore()
+    const getGridConfig = (count: number) => {
+        let cardSize: "xlarge" | "large" | "medium" | "small" | "xsmall";
 
-    const [queueMemberStatus, setQueueMemberStatus] = useState<QueueStatusMap>({})
-    const [totalizadoresByQueue, setTotalizadoresByQueue] = useState<any[]>([])
+        if (count === 1) {
+            // único agente → não gigante, não centralizado
+            cardSize = "medium";
+        } else if (count <= 4) cardSize = "xlarge";
+        else if (count <= 8) cardSize = "large";
+        else if (count <= 16) cardSize = "medium";
+        else if (count <= 30) cardSize = "small";
+        else cardSize = "xsmall";
 
-    useEffect(() => {
-        if (!dashSelected?.accountcode) return
-        const off = listenCompanyQueues(
-            dashSelected.accountcode,
-            (queues) => setQueueMemberStatus(reorganizarEAgrouparQueueMemberStatus(queues, dashSelected.filas)),
-            (err) => console.error("Erro listener:", err),
-        )
+        const gridAutoByCardSize: Record<typeof cardSize, string> = {
+            xlarge: "grid-cols-[repeat(auto-fit,minmax(420px,1fr))]",
+            large: "grid-cols-[repeat(auto-fit,minmax(360px,1fr))]",
+            medium: "grid-cols-[repeat(auto-fit,minmax(300px,1fr))]",
+            small: "grid-cols-[repeat(auto-fit,minmax(240px,1fr))]",
+            xsmall: "grid-cols-[repeat(auto-fit,minmax(200px,1fr))]",
+        };
 
-        const off2 = listenCompanyTotalizersQueues(
-            dashSelected.accountcode,
-            (queues) => {
-                const retorno = queues
-                    .filter((q) => q.data.queue)
-                    .map((q) => ({
-                        queue: q.data.queue,
-                        media_tma: parseFloat(String(q.data.media_tma || 0)),
-                        media_tme: parseFloat(String(q.data.media_tme || 0)),
-                        recebidas_abandonadas_na_fila: parseInt(String(q.data.recebidas_abandonadas_na_fila || 0)),
-                        recebidas_atendidas_na_fila: parseInt(String(q.data.recebidas_atendidas_na_fila || 0)),
-                    }))
-                setTotalizadoresByQueue(retorno)
-            },
-            (err) => console.error("Erro listener:", err),
-        )
+        const gridClass = `${gridAutoByCardSize[cardSize]} gap-4 sm:gap-6 lg:gap-8`;
+        return { gridClass, cardSize };
+    };
 
-        // Nota: listenCompanyQueues e listenCompanyTotalizersQueues já registram automaticamente os listeners
-        return () => { off(); off2() }
-    }, [dashSelected?.accountcode, dashSelected?.filas])
+    const { gridClass, cardSize } = getGridConfig(filteredAgents.length);
 
-    useEffect(() => {
-        setQueuesMonitoringCombined(
-            combinarQueueStatusETotalizadores(queueMemberStatus, totalizadoresByQueue ?? [], { onlyFromStatus: true })
-        )
-    }, [queueMemberStatus, totalizadoresByQueue])
-
-    const filasTransformadas = useMemo(
-        () => transformarQueuesMonitoring(queuesMonitoringCombined, filasStore, dashSelected),
-        [queuesMonitoringCombined, filasStore, dashSelected]
-    )
-
-    const totalAgents = useMemo(() => filasTransformadas.reduce((acc, f) => acc + (f.totalAgents || 0), 0), [filasTransformadas])
-    const totalBusyAgents = useMemo(() => filasTransformadas.reduce((acc, f) => acc + (f.busyAgents || 0), 0), [filasTransformadas])
-    const totalPausedAgents = useMemo(() => filasTransformadas.reduce((acc, f) => acc + (f.pausedAgents || 0), 0), [filasTransformadas])
-    const totalQueueSize = useMemo(() => filasTransformadas.reduce((acc, f) => acc + (f.queueSize || 0), 0), [filasTransformadas])
-    const queues = useMemo(() => filasTransformadas.map((q) => ({ ...q })), [filasTransformadas])
-
-    const getLevelFromConfig = (totalAgents: number, totalBusyAgents: number, totalPausedAgents: number, estados?: { alerta?: string | number; critico?: string | number }): "green" | "yellow" | "red" => {
-        const toNum = (v: unknown, def: number) => {
-            const n = Number(v)
-            return Number.isFinite(n) ? n : def
-        }
-
-        let alerta = toNum(estados?.alerta, 70)
-        let critico = toNum(estados?.critico, 100)
-
-        const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
-        alerta = clamp(alerta, 0, 99)
-        critico = clamp(critico, 1, 100)
-        if (critico <= alerta) critico = Math.min(100, alerta + 1)
-
-        if (totalAgents <= 0) return "green"
-
-        const pct = ((totalBusyAgents + totalPausedAgents) / totalAgents) * 100
-        if (pct >= critico) return "red"
-        if (pct >= alerta) return "yellow"
-        return "green"
-    }
-
-    const level = getLevelFromConfig(totalAgents, totalBusyAgents, totalPausedAgents, dashSelected?.configuracao?.estados)
-    const colorToken = ({ red: "traffic-red", yellow: "traffic-yellow", green: "traffic-green" } as const)[level]
-
-    const hsl = (token: string, alpha?: number) => alpha !== undefined ? `hsl(var(--${token}) / ${alpha})` : `hsl(var(--${token}))`
-
-    const leftColClass = isTV ? "lg:grid-cols-[880px_1fr]" : "lg:grid-cols-[520px_1fr]"
-    const gridStyle: React.CSSProperties = { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }
-
-    const ControlButton = ({ v }: { v: 1 | 2 | 3 | 4 }) => {
-        const active = cols === v
+    if (loading) {
         return (
-            <button type="button" onClick={() => setCols(v)} className={[
-                    "px-2.5 py-1.5 rounded-md text-xs font-medium border transition",
-                    active ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-muted",
-                ].join(" ")}
-                aria-pressed={active}
-                title={`${v} coluna${v > 1 ? "s" : ""}`}
-            >
-                {v}
-            </button>
-        )
+            <div className="w-full space-y-6">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <p className="text-muted-foreground">
+                            Carregando dados das filas...
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
-    const ringGlow =
-        level === "red"
-            ? `0 0 0 6px ${hsl(colorToken, .55)}, 0 0 28px 10px ${hsl(colorToken, .35)}`
-            : level === "yellow"
-                ? `0 0 0 4px ${hsl(colorToken, .45)}, 0 0 22px 8px ${hsl(colorToken, .28)}`
-                : `0 0 0 3px ${hsl(colorToken, .35)}, 0 0 18px 6px ${hsl(colorToken, .22)}`
-
-    return (
-        <div className={`relative mt-4 grid grid-cols-1 ${leftColClass} gap-6 rounded-2xl`}>
-            <div className={isTV ? "space-y-6 lg:sticky lg:top-6" : "space-y-12 lg:sticky lg:top-6"}>
-                {/* Card do Semáforo com borda pulsante */}
-                <div className="relative">
-                    <div aria-hidden className="pointer-events-none absolute -inset-1.5 rounded-2xl animate-pulse" style={{ border: `2px solid ${hsl(colorToken)}`, boxShadow: ringGlow }} />
-                    {level === "red" && (
-                        <div
-                            aria-hidden
-                            className="pointer-events-none absolute -inset-6 rounded-[1.75rem] opacity-30"
-                            style={{
-                                background: `radial-gradient(60% 60% at 50% 50%, ${hsl(colorToken, .35)} 0%, transparent 70%)`,
-                                filter: "blur(8px)",
-                            }}
-                        />
-                    )}
-
-                    <div className="relative isolate overflow-hidden rounded-2xl">
-                        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 animate-pulse" style={{
-                            background: `radial-gradient(120% 120% at 50% 40%, ${hsl(colorToken)} 35%, transparent 70%)`,
-                            filter: `blur(${isTV ? 28 : 18}px)`,
-                            opacity: isTV ? 0.38 : 0.25,
-                        }} />
-
-                        <div className="relative bg-card rounded-2xl border shadow-sm p-4 sm:p-5" style={{ borderColor: hsl("border") }}>
-                            <div style={{ transform: `scale(1.08)`, transformOrigin: "top center" }}>
-                                <TrafficLight
-                                    accountcode={dashSelected.accountcode}
-                                    totalAgents={totalAgents}
-                                    busyAgents={totalBusyAgents}
-                                    pausedAgents={totalPausedAgents}
-                                    estados={dashSelected?.configuracao?.estados}
-                                />
-                            </div>
+    if (error) {
+        return (
+            <div className="w-full space-y-6">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="flex flex-col items-center gap-4 text-center">
+                        <AlertTriangle className="h-12 w-12 text-destructive" />
+                        <div className="space-y-2">
+                            <h3 className="text-lg font-semibold">
+                                Erro ao carregar dados
+                            </h3>
+                            <p className="text-muted-foreground max-w-md">
+                                {error}
+                            </p>
+                            <Button
+                                onClick={refresh}
+                                variant="outline"
+                                className="mt-4"
+                            >
+                                <RefreshCcw className="w-4 h-4 mr-2" />
+                                Tentar novamente
+                            </Button>
                         </div>
                     </div>
                 </div>
-
-                <DashboardStats
-                    totalAgents={totalAgents}
-                    totalBusyAgents={totalBusyAgents}
-                    totalPausedAgents={totalPausedAgents}
-                    totalQueueSize={totalQueueSize}
-                    tv={isTV}
-                />
             </div>
+        );
+    }
 
-            {/* Direita: toolbar + grid filas */}
-            <div className="w-full">
-                <div className="mb-3 flex items-center justify-end gap-1.5">
-                    <span className="text-xs text-muted-foreground mr-1">Colunas:</span>
-                    <ControlButton v={1} />
-                    <ControlButton v={2} />
-                    <ControlButton v={3} />
-                    <ControlButton v={4} />
+    return (
+        <div
+            className={`flex flex-col ${
+                isHeaderVisible ? "h-[calc(100vh-120px)]" : "h-screen"
+            } overflow-hidden`}
+        >
+            <div className="sticky top-0 z-30 bg-surface-elevated/30 border-b border-glass-border">
+                {/* Estatísticas */}
+                <div
+                    className={`transition-all duration-300 ease-out ${
+                        isVisible
+                            ? "max-h-[999px] opacity-100"
+                            : "max-h-0 opacity-0"
+                    } overflow-hidden`}
+                >
+                    <div className="pt-4">
+                        <DashboardStats
+                            totalAgents={stats.totalAgents}
+                            availableAgents={stats.availableAgents}
+                            busyAgents={stats.busyAgents}
+                            ringingAgents={stats.ringingAgents}
+                            waitingAgents={stats.waitingAgents}
+                            pausedAgents={stats.pausedAgents}
+                            unavailableAgents={stats.unavailableAgents}
+                            totalQueueSize={stats.totalQueueSize}
+                            loading={loading}
+                        />
+                    </div>
                 </div>
 
-                <div role="list" className="grid auto-rows-fr gap-3 sm:gap-4 lg:gap-5" style={gridStyle}>
-                    {queues.map((q) => (
-                        <div key={q.id} role="listitem" className="min-w-0">
-                            <QueueCard
-                                name={q.name}
-                                totalAgents={q.totalAgents}
-                                activeAgents={q.availableAgents}
-                                queueSize={q.queueSize}
-                                filaData={q}
-                                onSaveConfig={() => { }}
-                            />
+                {/* Controles das estatísticas */}
+                {/* <div className="flex items-center justify-between p-2">
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={toggle}
+                            className="flex items-center gap-2"
+                            title={
+                                isVisible
+                                    ? "Ocultar estatísticas"
+                                    : "Mostrar estatísticas"
+                            }
+                        >
+                            {isVisible ? (
+                                <ChevronUp className="h-4 w-4" />
+                            ) : (
+                                <ChevronDown className="h-4 w-4" />
+                            )}
+                            {isVisible
+                                ? "Ocultar estatísticas"
+                                : "Mostrar estatísticas"}
+                        </Button>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                        {filteredAgents.length} de {orderedAgents.length}{" "}
+                        agentes
+                    </div>
+                </div> */}
+            </div>
+
+            {/* ÁREA SCROLLÁVEL: apenas os agentes rolam */}
+            <div className="flex-1 min-h-0">
+                {" "}
+                {/* min-h-0 habilita scroll do filho dentro do flex */}
+                <div
+                    className={`h-full overflow-y-auto ${
+                        filteredAgents.length === 1 ? "px-6 pt-2" : "p-2"
+                    }`}
+                >
+                    {filteredAgents.length > 0 ? (
+                        <div
+                            className={`grid ${gridClass} w-full auto-rows-max`}
+                        >
+                            {filteredAgents.map((ag) => (
+                                <CardAgent
+                                    key={ag.id}
+                                    ag={ag}
+                                    messageCount={messageCounts[ag.login] || 0}
+                                    isSelected={selectedId === ag.id}
+                                    onSelect={(sel) => {
+                                        setSelectedId(sel ? ag.id : null);
+                                        if (!sel)
+                                            setSelectedOpenChild(undefined);
+                                    }}
+                                    onDialogClose={() => {
+                                        setSelectedOpenChild(undefined);
+                                        clearAgentCount(ag.login);
+                                    }}
+                                    autoOpenDialog={
+                                        selectedId === ag.id
+                                            ? selectedOpenChild
+                                            : undefined
+                                    }
+                                />
+                            ))}
                         </div>
-                    ))}
-                    {queues.length === 0 && (
-                        <div className="col-span-full text-center text-sm text-muted-foreground py-10">
-                            Nenhuma fila para exibir.
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-center">
+                            <div className="p-6 rounded-full bg-muted/50 mb-6">
+                                <Monitor className="w-12 h-12 text-muted-foreground" />
+                            </div>
+                            <p className="text-lg text-muted-foreground">
+                                Nenhum agente ativo no momento.
+                            </p>
                         </div>
                     )}
                 </div>
             </div>
+
+            {/* Notifications (fora do scroller de agentes) */}
+            <PauseRequestNotifications
+                onOpenAgentDialog={(agentLogin) =>
+                    handleOpenAgentByLogin(agentLogin, "pause-requests")
+                }
+            />
         </div>
-    )
+    );
 }

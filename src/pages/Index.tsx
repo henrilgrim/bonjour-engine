@@ -12,7 +12,7 @@ export default function HomePage() {
 		if (isAuthenticated === undefined) return
 		if (redirected.current) return
 
-		const target = isAuthenticated ? "/select-dash" : "/login"
+		const target = isAuthenticated ? "/home" : "/login"
 		
 		if (location.pathname !== target) {
 			redirected.current = true

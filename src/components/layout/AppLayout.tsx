@@ -1,85 +1,53 @@
-import { Outlet, useLocation } from "react-router-dom"
-import Header from "@/components/layout/Header"
-import { Monitor, MonitorCog } from "lucide-react"
-import { useMonitoringDashStore } from "@/store/monitoringDashStore"
+import { Outlet, useLocation } from "react-router-dom";
+import {
+    SidebarProvider,
+    SidebarInset,
+    SidebarTrigger,
+} from "@/components/ui/sidebar";
+import AppSidebar from "@/components/layout/AppSidebar";
+import { useCoreStore } from "@/store/coreStore";
+import StatsToggleButton from "./StatsToggleButton";
 
 export default function AppLayout() {
-    const { pathname } = useLocation()
-    const { dashSelected } = useMonitoringDashStore()
+    const { pathname } = useLocation();
+    const isSidebarVisible = useCoreStore((s) => s.isHeaderVisible); // Reutilizando a mesma lógica
 
-    const cfg = (() => {
-        if (pathname.startsWith("/home")) {
-            return {
-                visible: true,
-                title: dashSelected?.nome || "Dashboard",
-                description: dashSelected?.descricao || "Monitoramento de filas e agentes",
-                icon: <Monitor className="w-6 h-6 lg:w-8 lg:h-8 text-primary" />,
-                showToggleTvMode: true,
-                showToggleFullscreen: true,
-                showChangeDashboard: true,
-                isGodPanel: false,
-            }
-        }
+    const showSidebar = (() => {
+        if (pathname.startsWith("/home")) return true;
+        if (pathname.startsWith("/settings")) return true;
+        if (pathname.startsWith("/notifications")) return true;
+        return false;
+    })();
 
-        if (pathname.startsWith("/select-dash")) {
-            return {
-                visible: true,
-                title: "Selecionar Dashboard",
-                description: "Selecione um dashboard existente ou crie um novo para monitorar suas filas.",
-                icon: <MonitorCog className="w-6 h-6 lg:w-8 lg:h-8 text-primary" />,
-                showToggleTvMode: false,
-                showToggleFullscreen: false,
-                showChangeDashboard: false,
-                isGodPanel: false,
-            }
-        }
+    if (!showSidebar) {
+        return (
+            <div className="min-h-screen">
+                <main className="px-4 md:px-6">
+                    <Outlet />
+                </main>
+            </div>
+        );
+    }
 
-        if (pathname.startsWith("/god-panel")) {
-            return {
-                visible: true,
-                title: "Painel God",
-                description: "Gerenciar usuários com acesso administrativo",
-                icon: <MonitorCog className="w-6 h-6 lg:w-8 lg:h-8 text-primary" />,
-                showToggleTvMode: false,
-                showToggleFullscreen: false,
-                showChangeDashboard: false,
-                isGodPanel: true,
-            }
-        }
-
-        return {
-            visible: true,
-            title: "App",
-            description: "",
-            icon: <Monitor className="w-6 h-6 text-primary" />,
-            showToggleTvMode: false,
-            showToggleFullscreen: false,
-            showChangeDashboard: false,
-            isGodPanel: false,
-        }
-    })()
-
-    // Layout padrão de tela + container (mantém padrão visual)
     return (
-        <div className="min-h-screen">
-            {cfg.visible && (
-                <div className="px-4 md:px-6 pt-4 md:pt-6">
-                    <Header
-                        title={cfg.title}
-                        description={cfg.description}
-                        icon={cfg.icon}
-                        showToggleTvMode={cfg.showToggleTvMode}
-                        showToggleFullscreen={cfg.showToggleFullscreen}
-                        showChangeDashboard={cfg.showChangeDashboard}
-                        isGodPanel={cfg.isGodPanel}
-                    />
-                </div>
-            )}
+        <SidebarProvider>
+            <div className="min-h-screen flex w-full">
+                {isSidebarVisible && <AppSidebar />}
+                <SidebarInset>
+                    <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+                        <div className="flex items-center gap-2 px-4">
+                            <SidebarTrigger className="-ml-1" />
 
-            {/* Área de conteúdo das páginas */}
-            <main className="px-4 md:px-6 pb-6">
-                <Outlet />
-            </main>
-        </div>
-    )
+                            {/* Botão de estatísticas aqui */}
+                            <StatsToggleButton />
+                        </div>
+                    </header>
+
+                    <main className="flex-1 px-4 md:px-6">
+                        <Outlet />
+                    </main>
+                </SidebarInset>
+            </div>
+        </SidebarProvider>
+    );
 }

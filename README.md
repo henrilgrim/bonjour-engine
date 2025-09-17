@@ -1,4 +1,4 @@
-# Monitor PXTALK — Guia de Release & Deploy
+# Gestor PXTALK — Guia de Release & Deploy
 
 Este README descreve como versionar, como publicar e como operar o app em produção usando branches `dev` → `main` e PM2 no servidor.  
 Inclui também dicas de quando usar `patch` / `minor` / `major` (SemVer), scripts, e resolução de problemas comuns.
