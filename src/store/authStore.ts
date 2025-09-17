@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware"
 import { getApiService } from "@/lib/api/services"
 import { Company, mapCompany } from "@/types/company"
 import { loginInRTDB } from "@/lib/firebase/realtime/online"
+import { firebaseListenersPool } from "@/lib/firebase/listeners-pool"
 import { ensureProfileDoc, upsertProfile } from "@/lib/firebase/firestore/profile"
 
 export type User = {
@@ -135,6 +136,8 @@ export const useAuthStore = create<AuthState>()(
 			},
 
 			clear: () => {
+				// Limpar todos os listeners do pool antes de limpar o estado
+				firebaseListenersPool.clearAll();
 				set({ isAuthenticated: false, user: null, company: null, loading: false, isLoading: false, error: null })
 			},
 

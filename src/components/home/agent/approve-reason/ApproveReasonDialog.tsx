@@ -21,7 +21,7 @@ import {
 import { SinglePauseRequest } from "./SinglePauseRequest";
 import type { PauseRequestList as PauseRequestType } from "@/lib/firebase/firestore/agents/types";
 import { PauseRequestList } from "./PauseRequestList";
-import { AgentView } from "@/hooks/use-realtime-agents";
+import type { AgentView } from "@/hooks/use-optimized-realtime-agents";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { XCircle } from "lucide-react";

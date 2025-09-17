@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useFirebaseAgentSelection } from "@/hooks/use-firebase-agent-selection";
-import { useRealtimeAgents } from "@/hooks/use-realtime-agents";
+import { useOptimizedRealtimeAgents } from "@/hooks/use-optimized-realtime-agents";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import type { ProfileAgent } from "@/lib/firebase/firestore/profile/types";
@@ -28,7 +28,7 @@ import { toast } from "@/hooks/use-toast";
 
 export default function SettingsPage() {
     const { user } = useAuthStore();
-    const { orderedAgents } = useRealtimeAgents();
+    const { orderedAgents } = useOptimizedRealtimeAgents();
     const {
         selectedAgents,
         clearAgents,

@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import {
-    listenPauseRequestStatus,
     PauseRequest,
     respondPauseRequest,
 } from "@/lib/firebase/realtime/pause/request";
+import { useOptimizedPauseRequests } from "@/lib/firebase/optimized-listeners";
 import type { PauseRequestList } from "@/lib/firebase/firestore/agents/types";
 import { useAuthStore } from "@/store/authStore";
 import { listProfileRequests } from "@/lib/firebase/firestore/agents";
@@ -37,13 +37,18 @@ export function usePauseRequests({
             return;
         }
 
-        const unsubscribe = listenPauseRequestStatus(
+        const unsubscribe = useOptimizedPauseRequests(
             accountcode,
             agentId,
             (newRequest) => {
                 setRequest(newRequest);
                 setLoading(false);
                 setError(null);
+            },
+            (error) => {
+                console.error("Erro ao escutar solicitações de pausa:", error);
+                setError(String(error));
+                setLoading(false);
             }
         );
 

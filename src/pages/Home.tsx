@@ -7,7 +7,7 @@ import {
     ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRealtimeAgents } from "@/hooks/use-realtime-agents";
+import { useOptimizedRealtimeAgents } from "@/hooks/use-optimized-realtime-agents";
 import { useFirebaseAgentSelection } from "@/hooks/use-firebase-agent-selection";
 
 import { useCoreStore } from "@/store/coreStore";
@@ -23,7 +23,7 @@ import CardAgent from "@/components/home/CardAgent";
 export default function HomePage() {
     const { user } = useAuthStore();
     const { orderedAgents, stats, loading, error, refresh } =
-        useRealtimeAgents();
+        useOptimizedRealtimeAgents();
     const { messageCounts, clearAgentCount } = useAgentMessageCounts();
     const { selectedAgents, hasSelection } = useFirebaseAgentSelection();
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ChatMessage } from "@/lib/firebase/firestore/chats/types"
-import { getAllMessages, markMessageAsRead, sendMessage, subscribeToMessages } from "@/lib/firebase/firestore/chats"
+import { getAllMessages, markMessageAsRead, sendMessage } from "@/lib/firebase/firestore/chats"
+import { useOptimizedChatMessages } from "@/lib/firebase/optimized-listeners"
 import { useAuthStore } from "@/store/authStore"
 import { CHAT_INDIVIDUAL_PREFIX } from "@/constants"
 
@@ -49,24 +50,32 @@ export function useFirebaseChat({ agentLogin, autoSubscribe = true }: UseFirebas
         if (!autoSubscribe) return;
 
         let isMounted = true;
-        const unsubscribe = subscribeToMessages(accountcode, chatId, (msgs) => {
-            if (isMounted) setMessages(msgs);
-        }, (err) => {
-            if (isMounted) setError(err as Error);
-        });
+        
+        const unsubscribe = useOptimizedChatMessages(
+            accountcode,
+            chatId,
+            (msgs) => {
+                if (isMounted) {
+                    setMessages(msgs);
+                    setLoading(false);
+                }
+            },
+            (err) => {
+                if (isMounted) {
+                    setError(err as Error);
+                    setLoading(false);
+                }
+            }
+        );
 
         unsubRef.current = unsubscribe;
         setLoading(true);
-
-        loadMessages().finally(() => {
-            if (isMounted) setLoading(false);
-        });
 
         return () => {
             isMounted = false;
             unsubscribe();
         };
-    }, [accountcode, chatId, autoSubscribe, loadMessages]);
+    }, [accountcode, chatId, autoSubscribe]);
 
     return {
         messages,

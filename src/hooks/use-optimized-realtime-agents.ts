@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-    listenCompanyQueues,
-    listenCompanyTotalizersQueues,
-} from "@/lib/firebase/realtime/company/listener";
 import { useQueuesStore } from "@/store/queuesStore";
 import { useAuthStore } from "@/store/authStore";
+import { useDebouncedState, useBatchedUpdates } from "./use-debounced-state";
 
 import {
     QueueStatusMap,
@@ -24,8 +21,14 @@ import {
     toTitleCase,
     STATUS_UI,
 } from "@/utils/home";
-import { listenAgents } from "@/lib/firebase/realtime/online";
 
+import {
+    useOptimizedCompanyQueues,
+    useOptimizedCompanyTotalizers,
+    useOptimizedAgentsOnline,
+} from "@/lib/firebase/optimized-listeners";
+
+// Tipos reutilizados da versão anterior
 type AgentView = {
     id: string;
     initials: string;
@@ -65,7 +68,7 @@ type Stats = {
     totalQueueSize: number;
 };
 
-export function useRealtimeAgents() {
+export function useOptimizedRealtimeAgents() {
     const company = useAuthStore((s) => s.company);
     const user = useAuthStore((s) => s.user);
 
@@ -74,14 +77,12 @@ export function useRealtimeAgents() {
     const errorQueues = useQueuesStore((s) => s.error);
     const fetchAllQueues = useQueuesStore((s) => s.fetchAll);
 
-    const [queuesMonitoringCombined, setQueuesMonitoringCombined] =
-        useState<QueueMapCombinado>({});
-    const [queueMemberStatus, setQueueMemberStatus] = useState<QueueStatusMap>(
-        {}
-    );
-    const [totalizadoresByQueue, setTotalizadoresByQueue] = useState<any[]>([]);
+    // Estados com debounce para reduzir re-renderizações
+    const [queuesMonitoringCombined, setQueuesMonitoringCombined] = useDebouncedState<QueueMapCombinado>({});
+    const [queueMemberStatus, batchUpdateQueueStatus] = useBatchedUpdates<QueueStatusMap>({});
+    const [totalizadoresByQueue, setTotalizadoresByQueue] = useDebouncedState<any[]>([]);
     const [agentOrder, setAgentOrder] = useState<string[]>([]);
-    const [agentsOnline, setAgentsOnline] = useState<any[]>([]);
+    const [agentsOnline, setAgentsOnline] = useDebouncedState<any[]>([]);
 
     // fetch inicial das filas se necessário
     useEffect(() => {
@@ -100,20 +101,20 @@ export function useRealtimeAgents() {
         user?.token_service,
     ]);
 
-    // listeners RTDB
+    // Listeners RTDB otimizados
     useEffect(() => {
         if (!company?.accountcode) return;
 
-        const off = listenCompanyQueues(
+        const unsubQueues = useOptimizedCompanyQueues(
             company.accountcode,
-            (queues) =>
-                setQueueMemberStatus(
-                    reorganizarEAgrouparQueueMemberStatus(queues)
-                ),
+            (queues) => {
+                const reorganized = reorganizarEAgrouparQueueMemberStatus(queues);
+                batchUpdateQueueStatus(() => reorganized);
+            },
             (err) => console.error("Erro listener queues:", err)
         );
 
-        const off2 = listenCompanyTotalizersQueues(
+        const unsubTotalizers = useOptimizedCompanyTotalizers(
             company.accountcode,
             (queues) => {
                 const retorno = queues
@@ -134,7 +135,7 @@ export function useRealtimeAgents() {
             (err) => console.error("Erro listener totalizadores:", err)
         );
 
-        const off3 = listenAgents(
+        const unsubAgents = useOptimizedAgentsOnline(
             company.accountcode,
             (agents) => {
                 setAgentsOnline(agents);
@@ -143,9 +144,9 @@ export function useRealtimeAgents() {
         );
 
         return () => {
-            off();
-            off2();
-            off3();
+            unsubQueues();
+            unsubTotalizers();
+            unsubAgents();
         };
     }, [company?.accountcode, itemsQueues]);
 

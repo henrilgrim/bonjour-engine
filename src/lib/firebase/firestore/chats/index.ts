@@ -102,53 +102,9 @@ export function subscribeAllAccountMessages(accountcode: string, onNext: (groupe
     }, err => onError?.(err))
 }
 
-export function subscribeAllAccountMessagesStream(accountcode: string, onEvent: (e: MessageEvent) => void, onError?: (e: unknown) => void): Unsubscribe {
-    const unsubMap = new Map<string, Unsubscribe>()
-
-    const chatsUnsub = onSnapshot(
-        getChatsCollection(accountcode),
-        (chatSnap) => {
-            const currentChatIds = new Set(chatSnap.docs.map((d) => d.id))
-
-            // remove chats que saíram
-            for (const [chatId, unsub] of unsubMap) {
-                if (!currentChatIds.has(chatId)) {
-                    unsub()
-                    unsubMap.delete(chatId)
-                }
-            }
-
-            // adiciona listeners p/ novos chats
-            for (const d of chatSnap.docs) {
-                const chatId = d.id
-                if (unsubMap.has(chatId)) continue
-
-                const qMsgs = query(getMessagesCollection(accountcode, chatId), orderBy("createdAt", "asc"))
-                const unsubMsgs = onSnapshot(
-                    qMsgs,
-                    (msgSnap) => {
-                        for (const change of msgSnap.docChanges()) {
-                            // ⬇️ anexa o id do doc
-                            const data = change.doc.data()
-                            const message = { id: change.doc.id, ...data } as ChatMessage
-                            onEvent({ chatId, message })
-                        }
-                    },
-                    (err) => onError?.(err)
-                )
-
-                unsubMap.set(chatId, unsubMsgs)
-            }
-        },
-        (err) => onError?.(err)
-    )
-
-    return () => {
-        chatsUnsub()
-        for (const unsub of unsubMap.values()) unsub()
-        unsubMap.clear()
-    }
-}
+// FUNÇÃO REMOVIDA: subscribeAllAccountMessagesStream
+// Esta função criava listeners aninhados problemáticos que causavam memory leaks.
+// Use o pool de listeners otimizados em seu lugar.
 
 export async function getAllMessages(accountcode: string, chatId: string): Promise<ChatMessage[]> {
     await ensureChatExists({

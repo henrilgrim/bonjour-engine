@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNotifications } from "@/hooks/use-notifications";
-import { useRealtimeAgents } from "@/hooks/use-realtime-agents";
+import { useOptimizedRealtimeAgents } from "@/hooks/use-optimized-realtime-agents";
 import { Bell, Send } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -46,7 +46,7 @@ export function CreateNotificationDialog({
 }: CreateNotificationDialogProps) {
     const [open, setOpen] = useState(false);
     const { createNotification, creating } = useNotifications({ accountcode });
-    const { orderedAgents: agents } = useRealtimeAgents();
+    const { orderedAgents: agents } = useOptimizedRealtimeAgents();
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),

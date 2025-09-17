@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { onSnapshot, orderBy, query } from "firebase/firestore";
 import { useAuthStore } from "@/store/authStore";
 import { CHAT_INDIVIDUAL_PREFIX } from "@/constants";
-import { getMessagesCollection } from "@/lib/firebase/firestore/chats";
-import type { ChatMessage } from "@/lib/firebase/firestore/chats/types";
+import { useOptimizedChatMessages } from "@/lib/firebase/optimized-listeners";
 
 import { hslVar } from "@/utils/home";
 import { Pause, MessageSquare, AlertCircle } from "lucide-react";
@@ -12,7 +10,7 @@ import { usePauseRequests } from "@/hooks/use-pause-requests";
 
 import AgentChatDialog from "./agent/AgentChatDialog";
 import AgentApproveReasonDialog from "./agent/approve-reason/ApproveReasonDialog";
-import { AgentView } from "@/hooks/use-realtime-agents";
+import type { AgentView } from "@/hooks/use-optimized-realtime-agents";
 
 type CardAgentProps = {
     ag: AgentView;
@@ -33,19 +31,25 @@ function useUnreadForAgentCard(agentLogin: string | undefined) {
             setUnread(0);
             return;
         }
+        
         const chatId = CHAT_INDIVIDUAL_PREFIX(agentLogin, String(supervisorId));
-        const q = query(
-            getMessagesCollection(accountcode, chatId),
-            orderBy("createdAt", "asc")
+        
+        const unsubscribe = useOptimizedChatMessages(
+            accountcode,
+            chatId,
+            (msgs) => {
+                const count = msgs.filter(
+                    (m) => m.receiverId === String(supervisorId) && !m.read
+                ).length;
+                setUnread(count);
+            },
+            (error) => {
+                console.error("Erro ao carregar mensagens não lidas:", error);
+                setUnread(0);
+            }
         );
-        const unsub = onSnapshot(q, (snap) => {
-            const msgs = snap.docs.map((d) => d.data() as ChatMessage);
-            const count = msgs.filter(
-                (m) => m.receiverId === String(supervisorId) && !m.read
-            ).length;
-            setUnread(count);
-        });
-        return () => unsub();
+        
+        return unsubscribe;
     }, [accountcode, agentLogin, supervisorId]);
 
     return unread;

@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import {
-    listenAgentNotifications,
     markNotificationAsRead,
     type Notification,
 } from "@/lib/firebase/firestore/notifications";
+import { useOptimizedAgentNotifications } from "@/lib/firebase/optimized-listeners";
 import { usePwaNotifications } from "./use-pwa-notifications";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/hooks/use-toast";
@@ -32,43 +32,51 @@ export function useFirebaseNotifications({
             return;
         }
 
-        const unsubscribe = listenAgentNotifications(accountcode, user.login, (list) => {
-            const currentKeys = new Set(list.map(keyOf));
-            const newKeys = Array.from(currentKeys).filter(
-                (key) => !previousKeysRef.current.has(key)
-            );
-
-            // Disparar notificações PWA para novas notificações
-            if (newKeys.length > 0 && previousKeysRef.current.size > 0) {
-                const newNotifications = list.filter((notification) =>
-                    newKeys.includes(keyOf(notification))
+        const unsubscribe = useOptimizedAgentNotifications(
+            accountcode,
+            user.login,
+            (list) => {
+                const currentKeys = new Set(list.map(keyOf));
+                const newKeys = Array.from(currentKeys).filter(
+                    (key) => !previousKeysRef.current.has(key)
                 );
 
-                newNotifications.forEach((notification) => {
-                    showNotification({
-                        title: notification.title,
-                        body: notification.message,
-                        playSound: true,
-                        actions: [
-                            {
-                                action: "view",
-                                title: "Ver Notificação",
-                                icon: "/favicon.png",
-                            },
-                        ],
-                        data: {
-                            notificationId: notification.id,
-                            accountcode,
-                            type: "firebase-notification",
-                        },
-                    });
-                });
-            }
+                // Disparar notificações PWA para novas notificações
+                if (newKeys.length > 0 && previousKeysRef.current.size > 0) {
+                    const newNotifications = list.filter((notification) =>
+                        newKeys.includes(keyOf(notification))
+                    );
 
-            previousKeysRef.current = currentKeys;
-            setNotifications(list);
-            setLoading(false);
-        });
+                    newNotifications.forEach((notification) => {
+                        showNotification({
+                            title: notification.title,
+                            body: notification.message,
+                            playSound: true,
+                            actions: [
+                                {
+                                    action: "view",
+                                    title: "Ver Notificação",
+                                    icon: "/favicon.png",
+                                },
+                            ],
+                            data: {
+                                notificationId: notification.id,
+                                accountcode,
+                                type: "firebase-notification",
+                            },
+                        });
+                    });
+                }
+
+                previousKeysRef.current = currentKeys;
+                setNotifications(list);
+                setLoading(false);
+            },
+            (error) => {
+                console.error("Erro ao escutar notificações:", error);
+                setLoading(false);
+            }
+        );
 
         return () => unsubscribe();
     }, [accountcode, enabled, user?.login, showNotification]);
