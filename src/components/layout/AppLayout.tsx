@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from "react-router-dom";
-import Header from "@/components/layout/Header";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/layout/AppSidebar";
 import { FirebaseNotificationDisplay } from "@/components/notifications/FirebaseNotificationDisplay";
 
 type cfgProps = {
@@ -20,20 +21,26 @@ export default function AppLayout() {
     })();
 
     return (
-        <div className="flex flex-col min-h-screen">
-            {cfg.visible && (
-                <header className="sticky top-0 z-50 w-full bg-background shadow-md px-6 py-3 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                    <Header />
-                </header>
-            )}
+        <SidebarProvider>
+            <div className="min-h-screen flex w-full">
+                {cfg.visible && <AppSidebar />}
+                
+                <div className="flex-1 flex flex-col min-h-screen">
+                    {cfg.visible && (
+                        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/50 p-2">
+                            <SidebarTrigger />
+                        </div>
+                    )}
 
-            {/* Conteúdo principal ocupa o restante */}
-            <main className="flex-1 w-full">
-                <Outlet />
-            </main>
+                    {/* Conteúdo principal ocupa o restante */}
+                    <main className="flex-1">
+                        <Outlet />
+                    </main>
+                </div>
 
-            {/* Notificações do Firebase */}
-            <FirebaseNotificationDisplay />
-        </div>
+                {/* Notificações do Firebase */}
+                <FirebaseNotificationDisplay />
+            </div>
+        </SidebarProvider>
     );
 }

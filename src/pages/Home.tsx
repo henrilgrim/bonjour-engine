@@ -1,11 +1,10 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { PauseDialog, PauseAlert, PauseButton } from "@/components/pause";
 
 import { BreaksTable } from "@/components/home/BreaksTable";
 import { CallsTable } from "@/components/home/CallsTable";
-import { StatsHome } from "@/components/home/StatsHome";
+import { StatsHeader } from "@/components/layout/StatsHeader";
 
 import OpenChat from "@/components/specific-buttons/OpenChat";
 
@@ -14,7 +13,6 @@ import { useTotalUnreadCount } from "@/hooks/use-total-unread-count";
 
 import { useTableStore } from "@/store/tableStore";
 import { useReasonStore } from "@/store/reasonStore";
-import { useCoreStore } from "@/store/coreStore";
 import { useNotifications } from "@/lib/notifications";
 
 import { SupervisorFloatingChat } from "@/components/chat/SupervisorFloatingChat";
@@ -79,9 +77,6 @@ export default function HomePage() {
         };
     }, []);
 
-    const isStatsVisible = useCoreStore((s) => s.isStatsVisible);
-    const toggle = useCoreStore((s) => s.toggleStats);
-
     const loadData = useCallback(async () => {
         await fetchTickets(1, 10);
         await fetchReasonsData();
@@ -108,64 +103,37 @@ export default function HomePage() {
     };
 
     return (
-        <div className="flex overflow-hidden bg-gradient-to-br from-background via-background to-muted/30">
-            <div className="flex-1 flex-col grid grid-cols-1 xl:grid-cols-3 gap-4 p-4 min-h-0">
-                <div className="xl:col-span-2 flex flex-col overflow-hidden">
-                    <div className="bg-card/50 backdrop-blur-sm border border-glass-border rounded-xl shadow-soft hover:shadow-glow transition-all duration-300">
-                        <CallsTable
-                            tickets={tickets.data}
-                            pagination={tickets.pagination}
-                            onPageChange={handlePageChange}
-                        />
+        <div className="flex flex-col min-h-screen">
+            {/* Stats Header */}
+            <StatsHeader
+                totalCalls={tickets.pagination.total}
+                totalBreaks={totalBreakSeconds}
+                averageTime={
+                    reasonsData.length > 0
+                        ? totalBreakSeconds / reasonsData.length
+                        : 0
+                }
+                reasons={reasonsData}
+                allReasonsMetadata={allReasonsMetadata}
+            />
+
+            {/* Main Content */}
+            <div className="flex-1 overflow-hidden bg-gradient-to-br from-background via-background to-muted/30">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4 h-full">
+                    <div className="xl:col-span-2 flex flex-col overflow-hidden">
+                        <div className="bg-card/50 backdrop-blur-sm border border-glass-border rounded-xl shadow-soft hover:shadow-glow transition-all duration-300 h-full">
+                            <CallsTable
+                                tickets={tickets.data}
+                                pagination={tickets.pagination}
+                                onPageChange={handlePageChange}
+                            />
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex flex-col overflow-hidden">
-                    <div className="bg-card/50 backdrop-blur-sm border border-glass-border rounded-xl shadow-soft hover:shadow-glow transition-all duration-300">
-                        <BreaksTable pauses={reasonsData} />
-                    </div>
-                </div>
-            </div>
-
-            {/* Controles da sidebar com design moderno */}
-            <div className="shrink-0 flex flex-col items-start pt-6 space-y-3 pr-2">
-                <button
-                    onClick={toggle}
-                    className="guide--pinned-stats group p-3 bg-surface-elevated/80 backdrop-blur-md hover:bg-surface-hover border border-glass-border rounded-l-xl transition-all duration-300 shadow-soft hover:shadow-glow hover:scale-105"
-                    title={
-                        isStatsVisible
-                            ? "Ocultar estatísticas"
-                            : "Mostrar estatísticas"
-                    }
-                >
-                    {isStatsVisible ? (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    ) : (
-                        <ChevronLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    )}
-                </button>
-            </div>
-
-            <div
-                className={`transition-all duration-500 ease-out ${
-                    isStatsVisible ? "w-72" : "w-0"
-                } shrink-0 overflow-hidden`}
-            >
-                <div className="h-full bg-surface-elevated/60 backdrop-blur-xl border-l border-glass-border relative">
-                    <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
-
-                    <div className="relative h-full p-6 flex flex-col min-h-0">
-                        <StatsHome
-                            totalCalls={tickets.pagination.total}
-                            totalBreaks={totalBreakSeconds}
-                            averageTime={
-                                reasonsData.length > 0
-                                    ? totalBreakSeconds / reasonsData.length
-                                    : 0
-                            }
-                            reasons={reasonsData}
-                            allReasonsMetadata={allReasonsMetadata}
-                        />
+                    <div className="flex flex-col overflow-hidden">
+                        <div className="bg-card/50 backdrop-blur-sm border border-glass-border rounded-xl shadow-soft hover:shadow-glow transition-all duration-300 h-full">
+                            <BreaksTable pauses={reasonsData} />
+                        </div>
                     </div>
                 </div>
             </div>
