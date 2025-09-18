@@ -12,7 +12,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UiThemeProvider } from "@/contexts/ui-theme";
-import { NotificationDisplay } from "@/components/notifications/NotificationDisplay";
+
 
 import AuthGuard from "@/components/layout/AuthGuard";
 import AppUpdateWatcher from "@/components/system/AppUpdateWatcher";
@@ -116,8 +116,6 @@ function AppRoutesWrapper() {
             {/* Componentes globais */}
             <AppUpdateWatcher />
 
-            {/* Sistema de notificações in-app */}
-            <NotificationDisplay />
         </>
     );
 }
