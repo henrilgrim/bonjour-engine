@@ -48,9 +48,14 @@ export function WaitingApproval({ reasonName, startedAt, onCancel, loading, show
                             </div>
                         </div>
 
-                        <Button onClick={onCancel} variant="outline" className="w-full py-6 text-lg font-semibold border-red-200 hover:bg-red-50 hover:border-red-300">
-                            {loading ? <Loader className="mr-2 h-5 w-5" /> : <X className="mr-2 h-5 w-5" />}
-                            Cancelar Solicitação
+                        <Button 
+                            onClick={onCancel} 
+                            disabled={loading}
+                            variant="outline" 
+                            className="w-full py-6 text-lg font-semibold border-red-200 hover:bg-red-50 hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loading ? <Loader className="mr-2 h-5 w-5 animate-spin" /> : <X className="mr-2 h-5 w-5" />}
+                            {loading ? "Cancelando..." : "Cancelar Solicitação"}
                         </Button>
                     </div>
                 </CardContent>
