@@ -1,262 +1,204 @@
-import { useState, useMemo } from "react";
-import {
-    Monitor,
-    AlertTriangle,
-    RefreshCcw,
-    ChevronUp,
-    ChevronDown,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useOptimizedRealtimeAgents } from "@/hooks/use-optimized-realtime-agents";
-import { useFirebaseAgentSelection } from "@/hooks/use-firebase-agent-selection";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { PauseDialog, PauseAlert, PauseButton } from "@/components/pause";
+
+import { BreaksTable } from "@/components/home/BreaksTable";
+import { CallsTable } from "@/components/home/CallsTable";
+import { StatsHome } from "@/components/home/StatsHome";
+
+import OpenChat from "@/components/specific-buttons/OpenChat";
+
+import { usePauseControl } from "@/hooks/use-pause-control";
+import { useTotalUnreadCount } from "@/hooks/use-total-unread-count";
+
+import { useTableStore } from "@/store/tableStore";
+import { useReasonStore } from "@/store/reasonStore";
 import { useCoreStore } from "@/store/coreStore";
-import { PauseRequestNotifications } from "@/components/notifications/PauseRequestNotifications";
-import { useSystemNotifications } from "@/hooks/use-system-notifications";
+import { useNotifications } from "@/lib/notifications";
 
-import { useAgentMessageCounts } from "@/hooks/use-agent-message-counts";
-import { useAuthStore } from "@/store/authStore";
-
-import DashboardStats from "@/components/home/DashboardStats";
-import CardAgent from "@/components/home/CardAgent";
+import { SupervisorFloatingChat } from "@/components/chat/SupervisorFloatingChat";
 
 export default function HomePage() {
-    const { user } = useAuthStore();
-    const { orderedAgents, stats, loading, error, refresh } =
-        useOptimizedRealtimeAgents();
-    const { messageCounts, clearAgentCount } = useAgentMessageCounts();
-    const { selectedAgents, hasSelection } = useFirebaseAgentSelection();
+    const [isDialogBreakOpen, setDialogBreakOpen] = useState(false);
+    const [isChatOpen, setChatOpen] = useState(false);
+    const [chatSupervisorId, setChatSupervisorId] = useState<string | null>(
+        null
+    );
 
-    // Sistema de notificações em background
-    useSystemNotifications({
-        accountcode: user?.accountcode || "",
-        enabled: !!user?.accountcode,
-    });
+    const { isPaused, isWaitingApproval } = usePauseControl();
+    const { tickets, fetchTickets, reasonsData, fetchReasonsData, setActive } =
+        useTableStore();
+    const { reasons: allReasonsMetadata } = useReasonStore();
+    const { totalUnread } = useTotalUnreadCount();
 
-    // === controle de seleção única e qual diálogo abrir ===
-    const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [selectedOpenChild, setSelectedOpenChild] = useState<
-        "chat" | "pause-requests" | undefined
-    >(undefined);
+    // Initialize notifications
+    useNotifications();
 
-    const isVisible = useCoreStore((s) => s.isStatsVisible);
-    const isHeaderVisible = useCoreStore((s) => s.isHeaderVisible);
-    const toggle = useCoreStore((s) => s.toggleStats);
-    const toggleHeader = useCoreStore((s) => s.toggleHeader);
+    // Função para abrir chat com supervisor específico
+    const openChatWithSupervisor = useCallback((supervisorId: string) => {
+        setChatSupervisorId(supervisorId);
+        setChatOpen(true);
+    }, []);
 
-    // abrir via notificações já apontando para o diálogo correto
-    const handleOpenAgentByLogin = (
-        agentLogin: string,
-        initialChild: "chat" | "pause-requests"
-    ) => {
-        const agent = orderedAgents.find(
-            (ag) => ag.id === agentLogin || ag.login === agentLogin
-        );
-        if (!agent) return;
-        if (messageCounts[agent.login]) clearAgentCount(agent.login);
+    // Disponibiliza globalmente para notificações
+    useEffect(() => {
+        (window as any).openChatWithSupervisor = openChatWithSupervisor;
+        return () => {
+            delete (window as any).openChatWithSupervisor;
+        };
+    }, [openChatWithSupervisor]);
 
-        // seleciona exclusivamente e agenda qual child abrir
-        setSelectedId(agent.id);
-        setSelectedOpenChild(initialChild);
-    };
+    // Listener para mensagens do service worker (notificações clicadas)
+    useEffect(() => {
+        const handleServiceWorkerMessage = (event: MessageEvent) => {
+            if (event.data?.type === "NOTIFICATION_CLICK") {
+                const { tag, action } = event.data;
 
-    const filteredAgents = useMemo(() => {
-        // Se há agentes selecionados, filtrar apenas eles
-        if (hasSelection && selectedAgents.length > 0) {
-            const selectedIds = new Set(
-                selectedAgents.map((agent) => agent.id)
-            );
-            return orderedAgents.filter((agent) => selectedIds.has(agent.id));
-        }
-        // Caso contrário, mostrar todos
-        return orderedAgents;
-    }, [orderedAgents, hasSelection, selectedAgents]);
-
-    const getGridConfig = (count: number) => {
-        let cardSize: "xlarge" | "large" | "medium" | "small" | "xsmall";
-
-        if (count === 1) {
-            // único agente → não gigante, não centralizado
-            cardSize = "medium";
-        } else if (count <= 4) cardSize = "xlarge";
-        else if (count <= 8) cardSize = "large";
-        else if (count <= 16) cardSize = "medium";
-        else if (count <= 30) cardSize = "small";
-        else cardSize = "xsmall";
-
-        const gridAutoByCardSize: Record<typeof cardSize, string> = {
-            xlarge: "grid-cols-[repeat(auto-fit,minmax(420px,1fr))]",
-            large: "grid-cols-[repeat(auto-fit,minmax(360px,1fr))]",
-            medium: "grid-cols-[repeat(auto-fit,minmax(300px,1fr))]",
-            small: "grid-cols-[repeat(auto-fit,minmax(240px,1fr))]",
-            xsmall: "grid-cols-[repeat(auto-fit,minmax(200px,1fr))]",
+                // Se for uma notificação de mensagem, abre o chat
+                if (tag === "message") {
+                    setChatOpen(true);
+                    // Se houver supervisorId nos dados, seleciona o supervisor
+                    if (event.data?.supervisorId) {
+                        setChatSupervisorId(event.data.supervisorId);
+                    }
+                }
+            }
         };
 
-        const gridClass = `${gridAutoByCardSize[cardSize]} gap-4 sm:gap-6 lg:gap-8`;
-        return { gridClass, cardSize };
+        navigator.serviceWorker?.addEventListener(
+            "message",
+            handleServiceWorkerMessage
+        );
+
+        return () => {
+            navigator.serviceWorker?.removeEventListener(
+                "message",
+                handleServiceWorkerMessage
+            );
+        };
+    }, []);
+
+    const isStatsVisible = useCoreStore((s) => s.isStatsVisible);
+    const toggle = useCoreStore((s) => s.toggleStats);
+
+    const loadData = useCallback(async () => {
+        await fetchTickets(1, 10);
+        await fetchReasonsData();
+    }, [fetchTickets, fetchReasonsData]);
+
+    // Ativa o tableStore ao montar e desativa ao desmontar
+    useEffect(() => {
+        setActive(true);
+        loadData();
+
+        return () => {
+            setActive(false);
+        };
+    }, [setActive, loadData]);
+
+    const totalBreakSeconds = useMemo(() => {
+        return reasonsData.reduce(
+            (acc, r) => acc + (r.durationInSeconds ?? 0),
+            0
+        );
+    }, [reasonsData]);
+    const handlePageChange = (newPage: number) => {
+        fetchTickets(newPage, tickets.pagination.limit);
     };
 
-    const { gridClass, cardSize } = getGridConfig(filteredAgents.length);
-
-    if (loading) {
-        return (
-            <div className="w-full space-y-6">
-                <div className="flex items-center justify-center min-h-[400px]">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        <p className="text-muted-foreground">
-                            Carregando dados das filas...
-                        </p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="w-full space-y-6">
-                <div className="flex items-center justify-center min-h-[400px]">
-                    <div className="flex flex-col items-center gap-4 text-center">
-                        <AlertTriangle className="h-12 w-12 text-destructive" />
-                        <div className="space-y-2">
-                            <h3 className="text-lg font-semibold">
-                                Erro ao carregar dados
-                            </h3>
-                            <p className="text-muted-foreground max-w-md">
-                                {error}
-                            </p>
-                            <Button
-                                onClick={refresh}
-                                variant="outline"
-                                className="mt-4"
-                            >
-                                <RefreshCcw className="w-4 h-4 mr-2" />
-                                Tentar novamente
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div
-            className={`flex flex-col ${
-                isHeaderVisible ? "h-[calc(100vh-120px)]" : "h-screen"
-            } overflow-hidden`}
-        >
-            <div className="sticky top-0 z-30 bg-surface-elevated/30 border-b border-glass-border">
-                {/* Estatísticas */}
-                <div
-                    className={`transition-all duration-300 ease-out ${
-                        isVisible
-                            ? "max-h-[999px] opacity-100"
-                            : "max-h-0 opacity-0"
-                    } overflow-hidden`}
-                >
-                    <div className="pt-4">
-                        <DashboardStats
-                            totalAgents={stats.totalAgents}
-                            availableAgents={stats.availableAgents}
-                            busyAgents={stats.busyAgents}
-                            ringingAgents={stats.ringingAgents}
-                            waitingAgents={stats.waitingAgents}
-                            pausedAgents={stats.pausedAgents}
-                            unavailableAgents={stats.unavailableAgents}
-                            totalQueueSize={stats.totalQueueSize}
-                            loading={loading}
+        <div className="flex overflow-hidden bg-gradient-to-br from-background via-background to-muted/30">
+            <div className="flex-1 flex-col grid grid-cols-1 xl:grid-cols-3 gap-4 p-4 min-h-0">
+                <div className="xl:col-span-2 flex flex-col overflow-hidden">
+                    <div className="bg-card/50 backdrop-blur-sm border border-glass-border rounded-xl shadow-soft hover:shadow-glow transition-all duration-300">
+                        <CallsTable
+                            tickets={tickets.data}
+                            pagination={tickets.pagination}
+                            onPageChange={handlePageChange}
                         />
                     </div>
                 </div>
 
-                {/* Controles das estatísticas */}
-                {/* <div className="flex items-center justify-between p-2">
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={toggle}
-                            className="flex items-center gap-2"
-                            title={
-                                isVisible
-                                    ? "Ocultar estatísticas"
-                                    : "Mostrar estatísticas"
-                            }
-                        >
-                            {isVisible ? (
-                                <ChevronUp className="h-4 w-4" />
-                            ) : (
-                                <ChevronDown className="h-4 w-4" />
-                            )}
-                            {isVisible
-                                ? "Ocultar estatísticas"
-                                : "Mostrar estatísticas"}
-                        </Button>
+                <div className="flex flex-col overflow-hidden">
+                    <div className="bg-card/50 backdrop-blur-sm border border-glass-border rounded-xl shadow-soft hover:shadow-glow transition-all duration-300">
+                        <BreaksTable pauses={reasonsData} />
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                        {filteredAgents.length} de {orderedAgents.length}{" "}
-                        agentes
-                    </div>
-                </div> */}
-            </div>
-
-            {/* ÁREA SCROLLÁVEL: apenas os agentes rolam */}
-            <div className="flex-1 min-h-0">
-                {" "}
-                {/* min-h-0 habilita scroll do filho dentro do flex */}
-                <div
-                    className={`h-full overflow-y-auto ${
-                        filteredAgents.length === 1 ? "px-6 pt-2" : "p-2"
-                    }`}
-                >
-                    {filteredAgents.length > 0 ? (
-                        <div
-                            className={`grid ${gridClass} w-full auto-rows-max`}
-                        >
-                            {filteredAgents.map((ag) => (
-                                <CardAgent
-                                    key={ag.id}
-                                    ag={ag}
-                                    messageCount={messageCounts[ag.login] || 0}
-                                    isSelected={selectedId === ag.id}
-                                    onSelect={(sel) => {
-                                        setSelectedId(sel ? ag.id : null);
-                                        if (!sel)
-                                            setSelectedOpenChild(undefined);
-                                    }}
-                                    onDialogClose={() => {
-                                        setSelectedOpenChild(undefined);
-                                        clearAgentCount(ag.login);
-                                    }}
-                                    autoOpenDialog={
-                                        selectedId === ag.id
-                                            ? selectedOpenChild
-                                            : undefined
-                                    }
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-center">
-                            <div className="p-6 rounded-full bg-muted/50 mb-6">
-                                <Monitor className="w-12 h-12 text-muted-foreground" />
-                            </div>
-                            <p className="text-lg text-muted-foreground">
-                                Nenhum agente ativo no momento.
-                            </p>
-                        </div>
-                    )}
                 </div>
             </div>
 
-            {/* Notifications (fora do scroller de agentes) */}
-            <PauseRequestNotifications
-                onOpenAgentDialog={(agentLogin) =>
-                    handleOpenAgentByLogin(agentLogin, "pause-requests")
-                }
+            {/* Controles da sidebar com design moderno */}
+            <div className="shrink-0 flex flex-col items-start pt-6 space-y-3 pr-2">
+                <button
+                    onClick={toggle}
+                    className="guide--pinned-stats group p-3 bg-surface-elevated/80 backdrop-blur-md hover:bg-surface-hover border border-glass-border rounded-l-xl transition-all duration-300 shadow-soft hover:shadow-glow hover:scale-105"
+                    title={
+                        isStatsVisible
+                            ? "Ocultar estatísticas"
+                            : "Mostrar estatísticas"
+                    }
+                >
+                    {isStatsVisible ? (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    ) : (
+                        <ChevronLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    )}
+                </button>
+            </div>
+
+            <div
+                className={`transition-all duration-500 ease-out ${
+                    isStatsVisible ? "w-72" : "w-0"
+                } shrink-0 overflow-hidden`}
+            >
+                <div className="h-full bg-surface-elevated/60 backdrop-blur-xl border-l border-glass-border relative">
+                    <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
+
+                    <div className="relative h-full p-6 flex flex-col min-h-0">
+                        <StatsHome
+                            totalCalls={tickets.pagination.total}
+                            totalBreaks={totalBreakSeconds}
+                            averageTime={
+                                reasonsData.length > 0
+                                    ? totalBreakSeconds / reasonsData.length
+                                    : 0
+                            }
+                            reasons={reasonsData}
+                            allReasonsMetadata={allReasonsMetadata}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <PauseDialog
+                open={isDialogBreakOpen}
+                setOpen={setDialogBreakOpen}
             />
+
+            <OpenChat
+                setOpenDialogChat={setChatOpen}
+                isPaused={isPaused}
+                unreadCount={totalUnread}
+            />
+            {isChatOpen && (
+                <SupervisorFloatingChat
+                    open={isChatOpen}
+                    onClose={() => {
+                        setChatOpen(false);
+                        setChatSupervisorId(null);
+                    }}
+                    onBack={() => {
+                        setChatSupervisorId(null);
+                    }}
+                    isPaused={isPaused}
+                    initialSupervisorId={chatSupervisorId}
+                />
+            )}
+
+            {!isPaused && !isWaitingApproval && (
+                <PauseButton setOpenDialogBreakReasons={setDialogBreakOpen} />
+            )}
+            {(isPaused || isWaitingApproval) && <PauseAlert />}
         </div>
     );
 }

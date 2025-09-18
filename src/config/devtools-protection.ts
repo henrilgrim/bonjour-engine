@@ -41,13 +41,13 @@ const DevToolsProtection = ({ requiredKey = "PX_SECRET", requiredValue, forceEna
 
         // 🔹 4) Proteção original
         const detectDevTools = () => {
-            const threshold = 160;
-            const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-            const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+            // const threshold = 160;
+            // const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+            // const heightThreshold = window.outerHeight - window.innerHeight > threshold;
 
-            if (widthThreshold || heightThreshold) {
-                alert("🚫 DevTools detectado! Por favor, feche as ferramentas de desenvolvedor.");
-            }
+            // if (widthThreshold || heightThreshold) {
+            //     alert("🚫 DevTools detectado! Por favor, feche as ferramentas de desenvolvedor.");
+            // }
         };
         const interval = setInterval(detectDevTools, 1000);
 

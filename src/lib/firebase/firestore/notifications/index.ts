@@ -29,31 +29,6 @@ export function getNotificationDoc(
 }
 
 /**
- * Cria uma nova notificação
- */
-export async function createNotification(
-    accountcode: string,
-    notification: NotificationInput,
-    createdBy: string,
-    createdByName: string
-): Promise<string> {
-    const notificationsRef = getNotificationsCollection(accountcode);
-
-    const notificationData: Omit<Notification, "id"> = {
-        title: notification.title,
-        message: notification.message,
-        targetAgents: notification.targetAgents,
-        createdBy,
-        createdByName,
-        createdAt: Date.now(),
-        readBy: {},
-    };
-
-    const docRef = await addDoc(notificationsRef, notificationData);
-    return docRef.id;
-}
-
-/**
  * Marca uma notificação como lida por um agente
  */
 export async function markNotificationAsRead(
@@ -76,39 +51,6 @@ export async function markNotificationAsRead(
 }
 
 /**
- * Escuta todas as notificações em tempo real
- */
-export function listenAllNotifications(
-    accountcode: string,
-    callback: (notifications: Notification[]) => void
-): () => void {
-    const notificationsRef = getNotificationsCollection(accountcode);
-    const q = query(notificationsRef, orderBy("createdAt", "desc"));
-
-    const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-            const notifications: Notification[] = [];
-
-            snapshot.forEach((doc) => {
-                notifications.push({
-                    id: doc.id,
-                    ...doc.data(),
-                } as Notification);
-            });
-
-            callback(notifications);
-        },
-        (error) => {
-            console.error("Erro ao escutar notificações:", error);
-            callback([]);
-        }
-    );
-
-    return unsubscribe;
-}
-
-/**
  * Escuta notificações para um agente específico
  */
 export function listenAgentNotifications(
@@ -119,23 +61,32 @@ export function listenAgentNotifications(
     const notificationsRef = getNotificationsCollection(accountcode);
     const q = query(
         notificationsRef,
-        where("targetAgents", "array-contains", agentLogin),
+        where("targetAgents", "array-contains", agentLogin.toString()),
         orderBy("createdAt", "desc")
     );
 
     const unsubscribe = onSnapshot(
         q,
         (snapshot) => {
-            const notifications: Notification[] = [];
+            const unreadNotifications: Notification[] = [];
 
             snapshot.forEach((doc) => {
-                notifications.push({
-                    id: doc.id,
-                    ...doc.data(),
-                } as Notification);
+                const data = doc.data() as Notification;
+
+                const hasRead =
+                    data.readBy &&
+                    typeof data.readBy === "object" &&
+                    String(agentLogin) in data.readBy;
+
+                if (!hasRead) {
+                    unreadNotifications.push({
+                        id: doc.id,
+                        ...data,
+                    });
+                }
             });
 
-            callback(notifications);
+            callback(unreadNotifications);
         },
         (error) => {
             console.error("Erro ao escutar notificações do agente:", error);

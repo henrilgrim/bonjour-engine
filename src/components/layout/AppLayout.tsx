@@ -1,53 +1,39 @@
 import { Outlet, useLocation } from "react-router-dom";
-import {
-    SidebarProvider,
-    SidebarInset,
-    SidebarTrigger,
-} from "@/components/ui/sidebar";
-import AppSidebar from "@/components/layout/AppSidebar";
-import { useCoreStore } from "@/store/coreStore";
-import StatsToggleButton from "./StatsToggleButton";
+import Header from "@/components/layout/Header";
+import { FirebaseNotificationDisplay } from "@/components/notifications/FirebaseNotificationDisplay";
+
+type cfgProps = {
+    visible?: boolean;
+};
 
 export default function AppLayout() {
     const { pathname } = useLocation();
-    const isSidebarVisible = useCoreStore((s) => s.isHeaderVisible); // Reutilizando a mesma lógica
 
-    const showSidebar = (() => {
-        if (pathname.startsWith("/home")) return true;
-        if (pathname.startsWith("/settings")) return true;
-        if (pathname.startsWith("/notifications")) return true;
-        return false;
+    const cfg: cfgProps = (() => {
+        if (pathname.startsWith("/home"))
+            return {
+                visible: true,
+            };
+        return {
+            visible: true,
+        };
     })();
 
-    if (!showSidebar) {
-        return (
-            <div className="min-h-screen">
-                <main className="px-4 md:px-6">
-                    <Outlet />
-                </main>
-            </div>
-        );
-    }
-
     return (
-        <SidebarProvider>
-            <div className="min-h-screen flex w-full">
-                {isSidebarVisible && <AppSidebar />}
-                <SidebarInset>
-                    <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-                        <div className="flex items-center gap-2 px-4">
-                            <SidebarTrigger className="-ml-1" />
+        <div className="flex flex-col min-h-screen">
+            {cfg.visible && (
+                <header className="sticky top-0 z-50 w-full bg-background shadow-md px-6 py-3 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                    <Header />
+                </header>
+            )}
 
-                            {/* Botão de estatísticas aqui */}
-                            <StatsToggleButton />
-                        </div>
-                    </header>
-
-                    <main className="flex-1 px-4 md:px-6">
-                        <Outlet />
-                    </main>
-                </SidebarInset>
-            </div>
-        </SidebarProvider>
+            {/* Conteúdo principal ocupa o restante */}
+            <main className="flex-1 w-full">
+                <Outlet />
+            </main>
+            
+            {/* Notificações do Firebase */}
+            <FirebaseNotificationDisplay />
+        </div>
     );
 }

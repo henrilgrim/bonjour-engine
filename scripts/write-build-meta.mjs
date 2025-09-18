@@ -1,4 +1,3 @@
-// scripts/gen-build-meta.mjs (ou .js se "type":"module" no package.json)
 import { execSync } from "node:child_process";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";

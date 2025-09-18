@@ -1,77 +1,113 @@
-import { onValue, update, serverTimestamp } from "firebase/database";
+import {
+    set,
+    onValue,
+    remove,
+    update,
+    serverTimestamp,
+} from "firebase/database";
 import { rtdbRefs } from "@/lib/firebase/realtime";
-import { Timestamp } from "firebase/firestore";
+import { ensureAnonymousSession } from "@/lib/firebase/authentication";
+import { registerRealtimeListener } from "../listeners";
 
-export interface PauseRequest {
-    agentLogin: string;
+export interface PauseRequestPayload {
     accountcode: string;
+    agentLogin: string;
     reasonId: string;
     reasonName: string;
     rejectionReason?: string;
+    startedAt: number; // ms (ou troque p/ serverTimestamp se preferir)
     status?: "pending" | "approved" | "rejected";
-    createdAt: Timestamp | number;
-    respondedAt?: Timestamp | number;
+    nameWhoResponded: string;
+    idWhoResponded: string;
+    maxDuration?: number; // tempo máximo em segundos
+    agentName?: string; // nome do agente
 }
 
-const tsToMs = (t: Timestamp | number | undefined): number => {
-    if (t == null) return 0;
-    if (typeof t === "number") return t;
-    const anyTs = t as any;
-    if (typeof anyTs.seconds === "number") return anyTs.seconds * 1000;
-    return 0;
-};
+type Callback = (data: PauseRequestPayload | null) => void;
 
-export const listenPauseRequestStatus = (
-    accountcode: string,
-    agentLogin: string,
-    callback: (data: PauseRequest | null) => void
-) => {
-    const requestRef = rtdbRefs.pauseRequests(accountcode, agentLogin);
-    const unsubscribe = onValue(requestRef, (snapshot) => {
-        const data = snapshot.val();
-        callback(
-            data ? ({ accountcode, agentLogin, ...data } as PauseRequest) : null
-        );
+/**
+ * Envia/atualiza uma requisição de pausa para o caminho:
+ * /pxtalk_call_center_module/{accountcode}/agent_panel/pauses/pause-requests/{agentLogin}
+ */
+export const sendPauseRequest = async (payload: PauseRequestPayload) => {
+    await ensureAnonymousSession();
+    const { agentLogin, accountcode, ...data } = payload;
+
+    await set(rtdbRefs.pauseRequests(accountcode, agentLogin), {
+        ...data,
+        status: "pending",
+        createdAt: serverTimestamp(),
     });
-    return unsubscribe;
 };
 
+/** Remove completamente a requisição de pausa do agente */
+export const removePauseRequest = async (
+    accountcode: string,
+    agentLogin: string
+) => {
+    await remove(rtdbRefs.pauseRequests(accountcode, agentLogin));
+};
+
+/** Atualiza o status (aprovado/rejeitado) e opcionalmente o motivo da rejeição */
 export const respondPauseRequest = async (
     accountcode: string,
     agentLogin: string,
-    params: { status: "approved" | "rejected"; rejectionReason?: string },
-    nameWhoResponded: string,
-    idWhoResponded: string
+    params: { status: "approved" | "rejected"; rejectionReason?: string }
 ) => {
     const { status, rejectionReason } = params;
     await update(rtdbRefs.pauseRequests(accountcode, agentLogin), {
         status,
         rejectionReason: status === "rejected" ? rejectionReason ?? "" : null,
         respondedAt: serverTimestamp(),
-        nameWhoResponded: nameWhoResponded,
-        idWhoResponded: idWhoResponded,
     });
 };
 
+/**
+ * Escuta a requisição de pausa de um agente específico.
+ * Retorna a função para descadastrar o listener manualmente.
+ */
+export const listenPauseRequestStatus = (
+    accountcode: string,
+    agentLogin: string,
+    callback: Callback
+) => {
+    const requestRef = rtdbRefs.pauseRequests(accountcode, agentLogin);
+    const unsub = onValue(requestRef, (snapshot) => {
+        const data = snapshot.val();
+        callback(data ? { accountcode, agentLogin, ...data } : null);
+    });
+
+    registerRealtimeListener(unsub);
+
+    return unsub;
+};
+
+/**
+ * Escuta todas as solicitações de pausa da conta (para o painel do gestor).
+ * Retorna a função para descadastrar o listener manualmente.
+ */
 export const listenAllPauseRequests = (
     accountcode: string,
-    callback: (list: PauseRequest[] | null) => void
+    callback: (list: Record<string, PauseRequestPayload> | null) => void
 ) => {
     const refAll = rtdbRefs.pauses(accountcode);
-    return onValue(refAll, (snap) => {
+
+    const unsub = onValue(refAll, (snap) => {
         const val = snap.val() as Record<string, any> | null;
-        if (!val) {
-            callback(null);
-            return;
-        }
-        const list: PauseRequest[] = Object.entries(val).map(
-            ([agentLogin, data]) => ({
+        if (!val) return callback(null);
+
+        const mapped: Record<string, PauseRequestPayload> = {};
+        for (const agentLogin of Object.keys(val)) {
+            mapped[agentLogin] = {
                 accountcode,
                 agentLogin,
-                ...data,
-            })
-        );
-        list.sort((a, b) => tsToMs(a.createdAt) - tsToMs(b.createdAt));
-        callback(list);
+                ...val[agentLogin],
+            };
+        }
+        callback(mapped);
     });
+
+    registerRealtimeListener(unsub);
+
+    return unsub;
 };
