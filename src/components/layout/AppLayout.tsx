@@ -31,7 +31,7 @@ export default function AppLayout() {
             <main className="flex-1 w-full">
                 <Outlet />
             </main>
-            
+
             {/* Notificações do Firebase */}
             <FirebaseNotificationDisplay />
         </div>

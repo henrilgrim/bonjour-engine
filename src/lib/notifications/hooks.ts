@@ -177,27 +177,6 @@ export function useNotifications() {
                 data,
             });
 
-            // Também mostra via toast para garantir visibilidade
-            try {
-                const { toast } = await import("sonner");
-                const toastVariant =
-                    variant === "error"
-                        ? "error"
-                        : variant === "success"
-                        ? "success"
-                        : "warning";
-
-                if (toastVariant === "error") {
-                    toast.error(title, { description: message });
-                } else if (toastVariant === "success") {
-                    toast.success(title, { description: message });
-                } else {
-                    toast.warning(title, { description: message });
-                }
-            } catch (error) {
-                console.error("❌ Erro ao exibir toast:", error);
-            }
-
             return result;
         },
         [notify]
