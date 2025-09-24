@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useReasonStore } from "@/store/reasonStore";
+import { useTableStore } from "@/store/tableStore";
 
 import { removePauseRequest } from "@/lib/firebase/realtime/pause/request";
 import { useAppStore } from "@/store/appStore";
@@ -12,6 +13,7 @@ import { notificationManager } from "@/lib/notifications/manager";
 export function usePauseControl() {
     const { toast } = useToast();
     const store = useReasonStore();
+    const { fetchTickets, fetchReasonsData } = useTableStore();
 
     // Bootstrap - carrega dados e rehidrata estado
     useEffect(() => {
@@ -99,6 +101,10 @@ export function usePauseControl() {
             variant: "success",
             type: "system",
         });
+
+        // Atualiza as tabelas após iniciar pausa
+        fetchReasonsData();
+        fetchTickets();
     }, [
         store.selectedReason,
         store.startPause,
@@ -137,6 +143,10 @@ export function usePauseControl() {
             type: "system",
             duration: 2000,
         });
+
+        // Atualiza as tabelas após finalizar pausa
+        fetchReasonsData();
+        fetchTickets();
     }, [store.endPause, store.correlationPause, toast]);
 
     const handleCancelPause = useCallback(async () => {
@@ -198,6 +208,10 @@ export function usePauseControl() {
         setTimeout(() => {
             store.clearApprovalState();
         }, 3000);
+
+        // Atualiza as tabelas após cancelar pausa
+        fetchReasonsData();
+        fetchTickets();
     }, [
         store.approvalState.reasonId,
         store.approvalState.reasonName,

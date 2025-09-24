@@ -10,8 +10,6 @@ export function FirebaseNotificationDisplay() {
     const { notifications, markAsRead, hasNotifications } =
         useFirebaseNotifications();
 
-    console.log("[notifications]", notifications);
-
     if (!hasNotifications) {
         return null;
     }

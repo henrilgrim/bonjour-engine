@@ -1,80 +1,98 @@
-import { useState } from "react"
-import { BUILD_META } from "@/build-meta"
+import { useState } from "react";
+import { BUILD_META } from "@/build-meta";
 
 type RemoteVersion = {
-	buildId?: string
-	version?: string
-	commit?: string
-	builtAt?: string
-	buildTime?: string
-}
+    buildId?: string;
+    version?: string;
+    commit?: string;
+    builtAt?: string;
+    buildTime?: string;
+};
+
+const LOCAL_ID = BUILD_META?.buildId ?? BUILD_META?.version;
+const LOCAL_TIME = BUILD_META?.builtAt ?? BUILD_META?.buildTime;
+const LOCAL_COMMIT = BUILD_META?.commit ?? "";
+
+const getId = (m: Partial<RemoteVersion>) => m.buildId ?? m.version;
+const getTime = (m: Partial<RemoteVersion>) => m.builtAt ?? m.buildTime;
 
 async function fetchRemote(): Promise<RemoteVersion | null> {
-	try {
-		const res = await fetch(`/version.json?ts=${Date.now()}`, { cache: "no-store" })
-		if (!res.ok) return null
-		return res.json()
-	} catch {
-		return null
-	}
+    try {
+        const res = await fetch(`/version.json?ts=${Date.now()}`, {
+            cache: "no-store",
+        });
+        if (!res.ok) return null;
+        return res.json();
+    } catch {
+        return null;
+    }
 }
 
-const getId = (m: { buildId?: string; version?: string }) => m.buildId ?? m.version
-const getTime = (m: { builtAt?: string; buildTime?: string }) => m.builtAt ?? m.buildTime
+function isSameVersion(remote: RemoteVersion): boolean {
+    const remoteId = getId(remote);
+    const remoteTime = getTime(remote);
 
-const LOCAL_ID = (BUILD_META as any).buildId ?? (BUILD_META as any).version
-const LOCAL_TIME = (BUILD_META as any).builtAt ?? (BUILD_META as any).buildTime
-const LOCAL_COMMIT = (BUILD_META as any).commit ?? ""
+    if (remoteId && LOCAL_ID && remoteId === LOCAL_ID) return true;
+    if (remote.commit && LOCAL_COMMIT && remote.commit === LOCAL_COMMIT)
+        return true;
+    if (remoteTime && LOCAL_TIME && remoteTime === LOCAL_TIME) return true;
 
-function isSame(remote: RemoteVersion) {
-	const rId = getId(remote)
-	const rTime = getTime(remote)
-	if (rId && LOCAL_ID && rId === LOCAL_ID) return true
-	if (remote.commit && LOCAL_COMMIT && remote.commit === LOCAL_COMMIT) return true
-	if (rTime && LOCAL_TIME && rTime === LOCAL_TIME) return true
-	return false
+    return false;
 }
 
 export default function VersionCheckButton() {
-	const [busy, setBusy] = useState(false)
-	const [msg, setMsg] = useState<string | null>(null)
+    const [busy, setBusy] = useState(false);
+    const [message, setMessage] = useState<string | null>(null);
 
-	const check = async () => {
-		setBusy(true); setMsg(null)
-		try {
-			const remote = await fetchRemote()
-			if (!remote) {
-				setMsg("Não foi possível verificar a versão.")
-				return
-			}
-			const same = isSame(remote)
-			setMsg(same ? "Você já está na versão mais recente." : "Nova versão disponível! Clique para atualizar.")
-			if (!same) {
-				if (confirm("Nova versão disponível. Atualizar agora?")) {
-					window.location.reload()
-				}
-			}
-		} catch (e: any) {
-			setMsg(`Falha ao checar: ${e?.message ?? String(e)}`)
-		} finally {
-			setBusy(false)
-		}
-	}
+    const checkVersion = async () => {
+        setBusy(true);
+        setMessage(null);
 
-	// 👉 se houver msg, NÃO mostra o botão — só o texto
-	if (msg) {
-		return (
-			<span className="text-xs px-2 py-1 rounded text-foreground/80">
-			{/* <span className="text-xs px-2 py-1 rounded text-foreground/80" title={LOCAL_COMMIT ? `commit: ${LOCAL_COMMIT}` : undefined}> */}
-				{msg}
-			</span>
-		)
-	}
+        try {
+            const remote = await fetchRemote();
+            if (!remote) {
+                setMessage("Não foi possível verificar a versão.");
+                return;
+            }
 
-	return (
-		<button onClick={check} disabled={busy} className="text-xs px-2 py-1 rounded border hover:bg-muted transition" >
-		{/* <button onClick={check} disabled={busy} className="text-xs px-2 py-1 rounded border hover:bg-muted transition" title={LOCAL_COMMIT ? `commit: ${LOCAL_COMMIT}` : "sem commit"}> */}
-			{busy ? "Checando…" : "Checar atualização"}
-		</button>
-	)
+            if (isSameVersion(remote)) {
+                setMessage("Você já está na versão mais recente.");
+            } else {
+                setMessage("Nova versão disponível! Clique para atualizar.");
+                if (
+                    confirm(
+                        "Nova versão detectada. Deseja recarregar a página agora?"
+                    )
+                ) {
+                    window.location.reload();
+                }
+            }
+        } catch (e: any) {
+            setMessage(`Erro ao verificar: ${e?.message ?? String(e)}`);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div
+            className="text-xs text-muted-foreground"
+            title={LOCAL_COMMIT ? `Commit: ${LOCAL_COMMIT}` : "Sem commit"}
+        >
+            {message ? (
+                <span className="block px-2 py-1 rounded bg-muted text-foreground/80">
+                    {message}
+                </span>
+            ) : (
+                <button
+                    onClick={checkVersion}
+                    disabled={busy}
+                    className="w-full text-left text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition disabled:opacity-50"
+                    aria-busy={busy}
+                >
+                    {busy ? "Checando versão…" : "Checar atualização"}
+                </button>
+            )}
+        </div>
+    );
 }

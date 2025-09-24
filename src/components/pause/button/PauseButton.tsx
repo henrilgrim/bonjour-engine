@@ -75,7 +75,7 @@ export function PauseButton({ setOpenDialogBreakReasons }: PauseButtonProps) {
         <button
             onClick={handleOpenDialogBreakReasons}
             aria-label="Abrir motivos de pausa"
-            className="guide--openned-dialog-reasons group fixed bottom-6 right-6 z-50 flex items-center justify-center rounded-full shadow-lg bg-yellow-400 hover:bg-yellow-500 text-black transition-all duration-300 w-[60px] h-[60px] hover:w-[160px] overflow-hidden"
+            className="group fixed bottom-6 right-6 z-50 flex items-center justify-center rounded-full shadow-lg bg-yellow-400 hover:bg-yellow-500 text-black transition-all duration-300 w-[60px] h-[60px] hover:w-[160px] overflow-hidden"
         >
             <Coffee className="h-6 w-6 flex-shrink-0 transition-opacity duration-200 group-hover:opacity-0" />
 

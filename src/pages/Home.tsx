@@ -1,10 +1,9 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 import { PauseDialog, PauseAlert, PauseButton } from "@/components/pause";
 
 import { BreaksTable } from "@/components/home/BreaksTable";
 import { CallsTable } from "@/components/home/CallsTable";
-import { StatsHeader } from "@/components/layout/StatsHeader";
 
 import OpenChat from "@/components/specific-buttons/OpenChat";
 
@@ -12,7 +11,6 @@ import { usePauseControl } from "@/hooks/use-pause-control";
 import { useTotalUnreadCount } from "@/hooks/use-total-unread-count";
 
 import { useTableStore } from "@/store/tableStore";
-import { useReasonStore } from "@/store/reasonStore";
 import { useNotifications } from "@/lib/notifications";
 
 import { SupervisorFloatingChat } from "@/components/chat/SupervisorFloatingChat";
@@ -27,8 +25,8 @@ export default function HomePage() {
     const { isPaused, isWaitingApproval } = usePauseControl();
     const { tickets, fetchTickets, reasonsData, fetchReasonsData, setActive } =
         useTableStore();
-    const { reasons: allReasonsMetadata } = useReasonStore();
     const { totalUnread } = useTotalUnreadCount();
+    // const softphoneEnabled = useAppStore((s) => s.softphoneEnabled);
 
     // Initialize notifications
     useNotifications();
@@ -92,36 +90,22 @@ export default function HomePage() {
         };
     }, [setActive, loadData]);
 
-    const totalBreakSeconds = useMemo(() => {
-        return reasonsData.reduce(
-            (acc, r) => acc + (r.durationInSeconds ?? 0),
-            0
-        );
-    }, [reasonsData]);
+    useEffect(() => {
+        document.title = "PxTalk - Painel do Agente";
+    }, []);
+
     const handlePageChange = (newPage: number) => {
         fetchTickets(newPage, tickets.pagination.limit);
     };
 
     return (
-        <div className="flex flex-col min-h-screen">
-            {/* Stats Header */}
-            <StatsHeader
-                totalCalls={tickets.pagination.total}
-                totalBreaks={totalBreakSeconds}
-                averageTime={
-                    reasonsData.length > 0
-                        ? totalBreakSeconds / reasonsData.length
-                        : 0
-                }
-                reasons={reasonsData}
-                allReasonsMetadata={allReasonsMetadata}
-            />
-
-            {/* Main Content */}
-            <div className="flex-1 overflow-hidden bg-gradient-to-br from-background via-background to-muted/30">
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4 h-full">
-                    <div className="xl:col-span-2 flex flex-col overflow-hidden">
-                        <div className="bg-card/50 backdrop-blur-sm border border-glass-border rounded-xl shadow-soft hover:shadow-glow transition-all duration-300 h-full">
+        <div className="h-full bg-gradient-to-br from-background via-background to-muted/30">
+            <div className="grid grid-cols-1 lg:grid-cols-6 gap-6 h-full">
+                {/* Tabela de Chamadas - ocupa 3/5 */}
+                <div className="flex flex-col overflow-hidden lg:col-span-4">
+                    <div className="bg-card/60 backdrop-blur-sm border border-glass-border rounded-xl shadow-soft hover:shadow-glow transition-all duration-300 h-full relative">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 rounded-xl" />
+                        <div className="relative z-10 h-full">
                             <CallsTable
                                 tickets={tickets.data}
                                 pagination={tickets.pagination}
@@ -129,9 +113,13 @@ export default function HomePage() {
                             />
                         </div>
                     </div>
+                </div>
 
-                    <div className="flex flex-col overflow-hidden">
-                        <div className="bg-card/50 backdrop-blur-sm border border-glass-border rounded-xl shadow-soft hover:shadow-glow transition-all duration-300 h-full">
+                {/* Tabela de Pausas - ocupa 2/5 */}
+                <div className="flex flex-col overflow-hidden lg:col-span-2">
+                    <div className="bg-card/60 backdrop-blur-sm border border-glass-border rounded-xl shadow-soft hover:shadow-glow transition-all duration-300 h-full relative">
+                        <div className="absolute inset-0 bg-gradient-to-br from-secondary/5 via-transparent to-muted/10 rounded-xl" />
+                        <div className="relative z-10 h-full">
                             <BreaksTable pauses={reasonsData} />
                         </div>
                     </div>
@@ -143,11 +131,6 @@ export default function HomePage() {
                 setOpen={setDialogBreakOpen}
             />
 
-            <OpenChat
-                setOpenDialogChat={setChatOpen}
-                isPaused={isPaused}
-                unreadCount={totalUnread}
-            />
             {isChatOpen && (
                 <SupervisorFloatingChat
                     open={isChatOpen}
@@ -163,9 +146,21 @@ export default function HomePage() {
                 />
             )}
 
-            {!isPaused && !isWaitingApproval && (
-                <PauseButton setOpenDialogBreakReasons={setDialogBreakOpen} />
-            )}
+            {/* softphoneEnabled */}
+            <div>
+                <OpenChat
+                    setOpenDialogChat={setChatOpen}
+                    isPaused={isPaused}
+                    unreadCount={totalUnread}
+                />
+
+                {!isPaused && !isWaitingApproval && (
+                    <PauseButton
+                        setOpenDialogBreakReasons={setDialogBreakOpen}
+                    />
+                )}
+            </div>
+
             {(isPaused || isWaitingApproval) && <PauseAlert />}
         </div>
     );

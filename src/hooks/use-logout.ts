@@ -8,6 +8,7 @@ import { useSupervisorStore } from "@/store/supervisorStore";
 import { useCoreStore } from "@/store/coreStore";
 import { useNotificationStore } from "@/lib/notifications/store";
 import { logoutAgent } from "@/lib/firebase/realtime/online";
+import { clearAllFirebaseListeners } from "@/lib/firebase/listeners";
 
 export function useLogout() {
     const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +33,10 @@ export function useLogout() {
             try {
                 tableStoreSetActive(false);
                 setListening(false);
+                
+                // Limpa todos os listeners do Firebase antes do logout
+                clearAllFirebaseListeners();
+                
                 await authStoreSignOut();
                 await logoutAgent(userId, accountcode);
 
@@ -47,6 +52,10 @@ export function useLogout() {
             } catch (error) {
                 tableStoreSetActive(false);
                 setListening(false);
+                
+                // Limpa todos os listeners mesmo em caso de erro
+                clearAllFirebaseListeners();
+                
                 await authStoreSignOut();
 
                 appStoreClear();

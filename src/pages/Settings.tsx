@@ -97,24 +97,6 @@ export default function Settings() {
         }));
     };
 
-    const handleSaveSettings = async () => {
-        try {
-            await saveNotificationsConfig(localConfig);
-            toast({
-                title: "Configurações salvas",
-                description: "Suas preferências foram salvas com sucesso.",
-            });
-        } catch (error) {
-            console.error("Erro ao salvar configurações:", error);
-            toast({
-                title: "Erro ao salvar",
-                description:
-                    "Não foi possível salvar as configurações. Tente novamente.",
-                variant: "destructive",
-            });
-        }
-    };
-
     const clearAllBrowserData = async () => {
         setIsClearing(true);
         try {
@@ -171,34 +153,6 @@ export default function Settings() {
 
     return (
         <div className="max-w-8xl mx-auto px-4 py-6 space-y-6">
-            {/* HEADER / HERO */}
-
-            <div className="flex items-start justify-between">
-                <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                        <Settings2 className="h-3.5 w-3.5" />
-                        Preferências do usuário
-                    </div>
-                    <h1 className="mt-3 text-3xl font-bold tracking-tight">
-                        Configurações
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Personalize notificações, tutorial e dados locais do
-                        aplicativo.
-                    </p>
-                </div>
-
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate(-1)}
-                    className="gap-1"
-                >
-                    <ChevronLeft className="w-4 h-4" />
-                    Voltar
-                </Button>
-            </div>
-
             {/* STATUS BAR */}
             <StatusBar
                 notifPermission={notifPermission}
@@ -209,15 +163,6 @@ export default function Settings() {
 
             {/* GRID */}
             <div className="grid gap-6 md:grid-cols-1">
-                {/* NOTIFICAÇÕES */}
-                {/* <CardNotification
-                    localConfig={localConfig}
-                    isBusy={isBusy}
-                    hasUnsavedChanges={hasUnsavedChanges}
-                    handleLocalConfigChange={handleLocalConfigChange}
-                    handleSaveSettings={handleSaveSettings}
-                /> */}
-
                 {/* RESET */}
                 <CardReset
                     isClearing={isClearing}

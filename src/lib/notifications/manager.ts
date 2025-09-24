@@ -74,6 +74,7 @@ export class NotificationManager {
             return null;
         }
 
+        // Actions não são suportadas em notificações diretas, apenas em Service Worker
         const defaultOptions: NotificationOptions = {
             icon: "/favicon.png",
             badge: "/favicon.png",
@@ -82,7 +83,7 @@ export class NotificationManager {
             requireInteraction: options.requireInteraction || false,
             silent: options.silent || true,
             data: options.data,
-            ...(options.actions && { actions: options.actions }),
+            // Removido actions para evitar erro em notificações diretas
         };
 
         try {
@@ -203,27 +204,19 @@ export class NotificationManager {
         }
         this.markAsSent(notificationKey);
 
-        // Para notificações de tempo excedido, adiciona botão de retorno
+        // Para notificações de tempo excedido, adiciona interação obrigatória
         const requireInteraction = type === "rejected" || type === "exceeded";
-        const shouldAddActions = type === "warning" || type === "exceeded";
 
         this.createNativeNotification({
             title: config.title,
             body: config.body,
             tag: config.tag,
             requireInteraction,
-            ...(shouldAddActions && {
-                actions: [
-                    {
-                        action: "return-to-panel",
-                        title: "Voltar ao Painel",
-                    },
-                ],
-            }),
+            // Actions removidas - não suportadas em notificações diretas
             data: {
                 type: "pause",
                 pauseType: type,
-                returnAction: shouldAddActions,
+                returnAction: false, // Sempre false para notificações diretas
             },
         });
     }

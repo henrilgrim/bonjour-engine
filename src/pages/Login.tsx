@@ -1,6 +1,5 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Lock, User, Phone, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,10 +11,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-
-import logo_light from "@/assets/logo-light.png";
-import logo_dark from "@/assets/logo-dark.png";
-
+import { Lock, User, Phone, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store/appStore";
 import { useAuthStore } from "@/store/authStore";
@@ -24,7 +20,31 @@ import { loginAgent } from "@/lib/firebase/realtime/online";
 import { useUiTheme } from "@/contexts/ui-theme";
 import { ensureAnonymousSession } from "@/lib/firebase/authentication";
 import { useFirebaseProfile } from "@/hooks/use-firebase-profile";
-// import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt"
+import logo_light from "@/assets/logo-light.svg";
+import logo_dark from "@/assets/logo-dark.svg";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+
+const demoAccounts: Record<
+    string,
+    { extension: string; login: string; password: string }
+> = {
+    europort: {
+        extension: "5959",
+        login: "270922",
+        password: "270922",
+    },
+    px1: {
+        extension: "2004",
+        login: "2004",
+        password: "2004",
+    },
+};
 
 const POLL_MAX_ATTEMPTS = 5;
 const POLL_INTERVAL_MS = 5000;
@@ -36,7 +56,6 @@ export default function LoginPage() {
     const navigate = useNavigate();
     const { toast, dismiss } = useToast();
     const { isDark } = useUiTheme();
-    const logoSrc = isDark ? logo_light : logo_dark;
 
     const [status, setStatus] = useState<Status>("ready");
     const [formData, setFormData] = useState<LoginForm>({
@@ -315,156 +334,150 @@ export default function LoginPage() {
         startPoll,
     ]);
 
-    const dev_mode = process.env.NODE_ENV === "development";
+    const devMode = process.env.NODE_ENV === "development";
+    const PxTalkLogo = isDark ? logo_light : logo_dark;
 
     return (
-        <main className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
-            <Card className="w-full max-w-md bg-card/80 shadow-2xl">
-                <CardHeader className="text-center space-y-2">
-                    <div className="relative w-[200px] h-[80px] mx-auto">
+        <main className="min-h-screen flex items-center justify-center bg-background px-4">
+            <Card className="w-full max-w-4xl shadow-xl border bg-card text-card-foreground rounded-xl overflow-hidden">
+                <div className="grid grid-cols-1 md:grid-cols-2">
+                    {/* Lado esquerdo */}
+                    <div className="flex flex-col items-center md:items-start justify-start p-8 bg-muted text-center md:text-left space-y-6">
                         <img
-                            src={logoSrc}
-                            alt="Painel do Agente"
-                            className="object-contain w-full h-full"
+                            src={PxTalkLogo}
+                            alt="Logo PxTalk"
+                            className="max-h-20 sm:max-h-24 w-auto"
+                            draggable={false}
                         />
+                        <div className="space-y-3">
+                            <h2 className="text-2xl font-bold">
+                                Painel do Agente
+                            </h2>
+                            <p className="text-sm text-muted-foreground max-w-sm">
+                                Sistema de atendimento integrado para analise de
+                                chamadas, acesso a filas e gestão de pausas.{" "}
+                                <br />
+                                <br /> Faça login com suas credenciais para
+                                acessar.
+                            </p>
+                        </div>
                     </div>
 
-                    <CardDescription className="text-sm text-muted-foreground">
-                        Entre com suas credenciais para acessar o sistema
-                    </CardDescription>
-                </CardHeader>
+                    {/* Lado direito - Login */}
+                    <div className="p-6 sm:p-8 flex flex-col justify-center">
+                        {/* <CardHeader className="text-center pb-4">
+                            <CardTitle className="text-xl font-bold">Acesso</CardTitle>
+                            <CardDescription className="text-sm text-muted-foreground">
+                                Digite seu ramal, login e senha para entrar
+                            </CardDescription>
+                        </CardHeader> */}
 
-                <CardContent className="space-y-4">
-                    {/* <PWAInstallPrompt /> */}
-                    <div className="space-y-2">
-                        <Label htmlFor="extension">Ramal</Label>
-                        <div className="relative">
-                            <Phone
-                                className="absolute left-3 inset-y-0 my-auto h-4 w-4 text-muted-foreground"
-                                aria-hidden
-                            />
-                            <Input
-                                id="extension"
-                                inputMode="numeric"
-                                placeholder="Digite o seu ramal"
-                                className="pl-10 bg-input border border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
-                                required
-                                value={formData.extension}
-                                onChange={handleChange}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        handleSubmit();
+                        <CardContent className="space-y-4">
+                            {/* Ramal */}
+                            <div className="space-y-1.5">
+                                <Label htmlFor="extension">Ramal</Label>
+                                <div className="relative">
+                                    <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="extension"
+                                        placeholder="Digite o número do seu ramal"
+                                        className="pl-10"
+                                        value={formData.extension}
+                                        onChange={handleChange}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Login */}
+                            <div className="space-y-1.5">
+                                <Label htmlFor="login">Login</Label>
+                                <div className="relative">
+                                    <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="login"
+                                        placeholder="Digite seu login"
+                                        className="pl-10"
+                                        value={formData.login}
+                                        onChange={handleChange}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Senha */}
+                            <div className="space-y-1.5">
+                                <Label htmlFor="password">Senha</Label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="password"
+                                        placeholder="Sua senha"
+                                        className="pl-10 pr-10"
+                                        type={
+                                            showPassword ? "text" : "password"
+                                        }
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setShowPassword((v) => !v)
+                                        }
+                                        className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                            <Eye className="h-4 w-4" />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </CardContent>
+
+                        <CardFooter className="flex flex-col gap-3">
+                            <Button
+                                className="w-full"
+                                disabled={isSubmitDisabled}
+                                onClick={handleSubmit}
+                            >
+                                {status === "authenticating"
+                                    ? "Entrando..."
+                                    : status === "checking-status"
+                                    ? "Aguardando autorização no telefone..."
+                                    : "Entrar"}
+                            </Button>
+
+                            {/* Botão DEMO */}
+                            <Select
+                                onValueChange={(value) => {
+                                    const creds = demoAccounts[value];
+                                    if (creds) {
+                                        setFormData(creds);
                                     }
                                 }}
-                                aria-invalid={!!formData.extension}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="login">Login</Label>
-                        <div className="relative">
-                            <User
-                                className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground"
-                                aria-hidden
-                            />
-                            <Input
-                                id="login"
-                                placeholder="Seu login de agente"
-                                className="pl-10 bg-input border border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
-                                required
-                                value={formData.login}
-                                onChange={handleChange}
-                                autoComplete="username"
-                                onKeyDown={(e) =>
-                                    e.key === "Enter" && handleSubmit()
-                                }
-                                aria-invalid={!!formData.login}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="password">Senha</Label>
-                        <div className="relative">
-                            <Lock
-                                className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground"
-                                aria-hidden
-                            />
-                            <Input
-                                id="password"
-                                type={showPassword ? "text" : "password"}
-                                placeholder="Sua senha"
-                                className="pl-10 pr-10 bg-input border border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
-                                required
-                                value={formData.password}
-                                onChange={handleChange}
-                                autoComplete="current-password"
-                                onKeyDown={(e) =>
-                                    e.key === "Enter" && handleSubmit()
-                                }
-                                aria-describedby="password-helper"
-                                aria-invalid={!!formData.password}
-                            />
-                            <button
-                                type="button"
-                                aria-label={
-                                    showPassword
-                                        ? "Ocultar senha"
-                                        : "Mostrar senha"
-                                }
-                                className="absolute right-2 top-2.5 p-1 rounded-md hover:bg-accent"
-                                onClick={() => setShowPassword((v) => !v)}
-                                tabIndex={0}
                             >
-                                {showPassword ? (
-                                    <EyeOff className="h-4 w-4" />
-                                ) : (
-                                    <Eye className="h-4 w-4" />
-                                )}
-                            </button>
-                        </div>
-                        <p id="password-helper" className="sr-only">
-                            Pressione o botão para alternar a visualização da
-                            senha.
-                        </p>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Preencher DEMO" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Object.entries(demoAccounts).map(
+                                        ([key]) => (
+                                            <SelectItem key={key} value={key}>
+                                                {key}
+                                            </SelectItem>
+                                        )
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </CardFooter>
                     </div>
-                </CardContent>
+                </div>
 
-                <CardFooter className="flex flex-col space-y-4">
-                    <Button
-                        type="button"
-                        className="w-full font-semibold transition-all duration-200"
-                        disabled={isSubmitDisabled}
-                        onClick={handleSubmit}
-                    >
-                        {status === "authenticating"
-                            ? "Entrando..."
-                            : status === "checking-status"
-                            ? "Aguardando autorização no telefone..."
-                            : "Entrar"}
-                    </Button>
-
-                    {dev_mode && (
-                        <div className="mt-2 text-center">
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                onClick={() =>
-                                    setFormData({
-                                        extension: "2004",
-                                        login: "2004",
-                                        password: "2004",
-                                    })
-                                }
-                            >
-                                Preencher DEMO
-                            </Button>
-                        </div>
-                    )}
-                </CardFooter>
+                <div className="text-xs text-muted-foreground text-center p-2 border-t border-border/30">
+                    Powered by{" "}
+                    <span className="font-semibold text-primary">pxTalk</span>
+                </div>
             </Card>
         </main>
     );

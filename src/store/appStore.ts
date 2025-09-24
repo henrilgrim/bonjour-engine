@@ -37,6 +37,7 @@ interface AppState {
     extensionLoading: boolean;
     actualStateExtensionLoading: boolean;
     actualStateAgentLoading: boolean;
+    softphoneEnabled: boolean;
 
     alreadyHeard: string[];
 
@@ -51,8 +52,8 @@ interface AppState {
     setActualStateExtension: (status: ExtensionStatus | null) => void;
     setActualAgentStatus: (status: AgentStatus | null) => void;
     setHasFetchedCompany: (value: boolean) => void;
+    setSoftphoneEnabled: (enabled: boolean) => void;
     setAlreadyHeard: (ticketId: string) => void;
-
     // actions
     checkCompanyCode: (
         code: string
@@ -85,6 +86,8 @@ export const useAppStore = create<AppState>()(
             extensionLoading: false,
             actualStateExtensionLoading: false,
             actualStateAgentLoading: false,
+            softphoneEnabled: false,
+            // softphoneEnabled: true,
 
             alreadyHeard: [],
 
@@ -116,6 +119,9 @@ export const useAppStore = create<AppState>()(
 
             setHasFetchedCompany: (value: boolean) =>
                 set({ hasFetchedCompany: value }),
+
+            setSoftphoneEnabled: (enabled: boolean) =>
+                set({ softphoneEnabled: enabled }),
 
             setAlreadyHeard: (ticketId: string) =>
                 set((s) => ({
@@ -419,6 +425,7 @@ export const useAppStore = create<AppState>()(
                 extension: state.extension,
                 actualStateAgent: state.actualStateAgent,
                 actualStateExtension: state.actualStateExtension,
+                softphoneEnabled: state.softphoneEnabled,
                 alreadyHeard: state.alreadyHeard,
             }),
         }

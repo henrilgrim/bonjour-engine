@@ -8,6 +8,12 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { Reason } from "@/types";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ReasonData {
     reason: string;
@@ -29,99 +35,105 @@ export function StatsHeader({
     reasons = [],
     allReasonsMetadata = [],
 }: StatsHeaderProps) {
-    const convertSecondsToTime = (seconds: number) => {
+    const formatTime = (seconds: number): string => {
         const total = Math.round(seconds);
-        const hours = Math.floor(total / 3600);
-        const minutes = Math.floor((total % 3600) / 60);
-        const secs = total % 60;
-        return `${hours.toString().padStart(2, "0")}:${minutes
+        const h = Math.floor(total / 3600)
             .toString()
-            .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+            .padStart(2, "0");
+        const m = Math.floor((total % 3600) / 60)
+            .toString()
+            .padStart(2, "0");
+        const s = (total % 60).toString().padStart(2, "0");
+        return `${h}:${m}:${s}`;
     };
 
-    const { productiveTime, unproductiveTime, mostCommonReason } =
-        useMemo(() => {
-            const grouped: Record<
-                string,
-                { total: number; count: number; productive: boolean }
-            > = {};
+    const { productiveAvg, unproductiveAvg, mostCommonReason } = useMemo(() => {
+        const grouped = new Map<
+            string,
+            { total: number; count: number; productive: boolean }
+        >();
 
-            let prodTotal = 0;
-            let prodCount = 0;
-            let imprTotal = 0;
-            let imprCount = 0;
+        let prodTotal = 0,
+            prodCount = 0;
+        let imprTotal = 0,
+            imprCount = 0;
 
-            for (const pause of reasons) {
-                const meta = allReasonsMetadata.find(
-                    (r) => r.name === pause.reason
-                );
-                const isProductive = meta?.productivePause ?? false;
+        for (const { reason, durationInSeconds } of reasons) {
+            const meta = allReasonsMetadata.find((r) => r.name === reason);
+            const isProductive = meta?.productivePause ?? false;
 
-                if (isProductive) {
-                    prodTotal += pause.durationInSeconds;
-                    prodCount += 1;
-                } else {
-                    imprTotal += pause.durationInSeconds;
-                    imprCount += 1;
-                }
-
-                if (!grouped[pause.reason]) {
-                    grouped[pause.reason] = {
-                        total: 0,
-                        count: 0,
-                        productive: isProductive,
-                    };
-                }
-
-                grouped[pause.reason].total += pause.durationInSeconds;
-                grouped[pause.reason].count += 1;
+            if (!grouped.has(reason)) {
+                grouped.set(reason, {
+                    total: 0,
+                    count: 0,
+                    productive: isProductive,
+                });
             }
 
-            let mostUsed =
-                Object.entries(grouped).sort(
-                    (a, b) => b[1].count - a[1].count
-                )[0]?.[0] || "—";
+            const entry = grouped.get(reason)!;
+            entry.total += durationInSeconds;
+            entry.count += 1;
 
-            return {
-                productiveTime: prodCount ? prodTotal / prodCount : 0,
-                unproductiveTime: imprCount ? imprTotal / imprCount : 0,
-                mostCommonReason: mostUsed,
-            };
-        }, [reasons, allReasonsMetadata]);
+            if (isProductive) {
+                prodTotal += durationInSeconds;
+                prodCount++;
+            } else {
+                imprTotal += durationInSeconds;
+                imprCount++;
+            }
+        }
+
+        const mostUsed =
+            Array.from(grouped.entries()).sort(
+                (a, b) => b[1].count - a[1].count
+            )?.[0]?.[0] ?? "—";
+
+        return {
+            productiveAvg: prodCount ? prodTotal / prodCount : 0,
+            unproductiveAvg: imprCount ? imprTotal / imprCount : 0,
+            mostCommonReason: mostUsed,
+        };
+    }, [reasons, allReasonsMetadata]);
 
     const stats = [
         {
-            label: "Pausas Totais",
-            value: convertSecondsToTime(totalBreaks),
-            icon: Coffee,
-            color: "text-green-500",
-        },
-        {
-            label: "Chamadas",
-            value: String(totalCalls ?? ""),
+            label: "Total de Chamadas",
+            labelTooltip: "Quantidade Total de Chamadas",
+            value: String(totalCalls),
             icon: PhoneCall,
             color: "text-blue-500",
         },
         {
+            label: "Total de Pausas",
+            labelTooltip: "Tempo Total de Pausas",
+            value: formatTime(totalBreaks),
+            icon: Coffee,
+            color: "text-green-500",
+        },
+        {
             label: "Tempo Médio",
-            value: convertSecondsToTime(averageTime),
+            labelTooltip: "Tempo Médio de Todas as Pausas",
+            value: formatTime(averageTime),
             icon: Clock,
             color: "text-yellow-500",
         },
         {
             label: "Média Produtiva",
-            value: convertSecondsToTime(productiveTime),
+            labelTooltip: "Tempo Médio de Pausas Produtivas",
+            value: formatTime(productiveAvg),
             icon: ThumbsUp,
             color: "text-green-600",
         },
         {
             label: "Média Improdutiva",
-            value: convertSecondsToTime(unproductiveTime),
+            labelTooltip: "Tempo Médio de Pausas Improdutivas",
+            value: formatTime(unproductiveAvg),
             icon: ThumbsDown,
             color: "text-red-500",
         },
         {
-            label: "Mais frequente",
+            label: "Mais Frequente",
+            labelTooltip: "Pausa Mais Frequente",
             value: mostCommonReason,
             icon: Flame,
             color: "text-purple-500",
@@ -129,41 +141,45 @@ export function StatsHeader({
     ];
 
     return (
-        <div className="bg-background/95 backdrop-blur-sm border-b border-border/50 shadow-sm">
-            <div className="px-6 py-4">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                            Estatísticas de Hoje
-                        </h2>
-                        <div className="w-12 h-0.5 bg-gradient-to-r from-primary to-transparent mt-2" />
-                    </div>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    {stats.map((stat, index) => {
-                        const Icon = stat.icon;
-                        return (
-                            <div
-                                key={index}
-                                className="group flex items-center gap-3 p-3 bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl hover:bg-card/70 hover:border-primary/20 transition-all duration-300 hover:scale-[1.02]"
-                            >
-                                <div className="p-2 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 group-hover:border-primary/20 transition-all duration-300">
-                                    <Icon className="h-4 w-4 text-primary group-hover:scale-110 transition-transform duration-300" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] text-muted-foreground font-medium truncate mb-0.5">
-                                        {stat.label}
+        <section className="w-full">
+            <TooltipProvider delayDuration={100}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    {stats.map(
+                        (
+                            { label, labelTooltip, value, icon: Icon, color },
+                            index
+                        ) => (
+                            <Tooltip key={index}>
+                                <TooltipTrigger asChild>
+                                    <div className="group flex items-center gap-3 p-3 bg-card/60 backdrop-blur-md border border-border/40 rounded-lg hover:bg-card/80 hover:border-primary/20 transition-all duration-200 hover:scale-[1.01] cursor-default">
+                                        <div className="p-2 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 group-hover:border-primary/20 transition-all duration-200">
+                                            <Icon
+                                                className={`w-4 h-4 ${color} group-hover:scale-110 transition-transform`}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[11px] text-muted-foreground font-medium truncate">
+                                                {label}
+                                            </span>
+                                            <span className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors duration-200">
+                                                {value}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p className="font-medium">
+                                        {labelTooltip}
                                     </p>
-                                    <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors duration-300">
-                                        {stat.value}
+                                    <p className="text-sm text-muted-foreground">
+                                        {value}
                                     </p>
-                                </div>
-                            </div>
-                        );
-                    })}
+                                </TooltipContent>
+                            </Tooltip>
+                        )
+                    )}
                 </div>
-            </div>
-        </div>
+            </TooltipProvider>
+        </section>
     );
 }

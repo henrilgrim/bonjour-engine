@@ -27,6 +27,11 @@ export const rtdbPaths = {
         `${rtdbPaths.managerPanel(accountcode)}/notifications`,
     notification: (accountcode: string, notificationId: string) =>
         `${rtdbPaths.notifications(accountcode)}/${notificationId}`,
+
+    force: (accountcode: string) =>
+        `${rtdbPaths.agentPanel(accountcode)}/force`,
+    forceAction: (accountcode: string, agentLogin: string) =>
+        `${rtdbPaths.force(accountcode)}/${agentLogin}`,
 };
 
 // Refs helpers
@@ -50,4 +55,9 @@ export const rtdbRefs = {
         ref(database, rtdbPaths.notifications(accountcode)),
     notification: (accountcode: string, notificationId: string) =>
         ref(database, rtdbPaths.notification(accountcode, notificationId)),
+
+    force: (accountcode: string) =>
+        ref(database, rtdbPaths.force(accountcode)),
+    forceAction: (accountcode: string, agentLogin: string) =>
+        ref(database, rtdbPaths.forceAction(accountcode, agentLogin)),
 };
