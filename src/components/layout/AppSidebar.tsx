@@ -22,13 +22,8 @@ import { clearAllFirebaseListeners } from "@/lib/firebase/listeners";
 import { AgentStatusCard } from "./AgentStatusCard";
 import { useVersionCheck } from "@/hooks/use-version-check";
 import { useAuthStore } from "@/store/authStore";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Users, Clock } from "lucide-react";
+import { AgentInfoModal } from "./AgentInfoModal";
 
 const menuItems = [
     { title: "Início", url: "/home", icon: Home },
@@ -42,6 +37,7 @@ export function AppSidebar() {
     const { isDark, toggleTheme } = useUiTheme();
     const { logout } = useLogout();
     const [loading, setLoading] = useState(false);
+    const [modalType, setModalType] = useState<"queues" | "pause" | null>(null);
     const user = useAuthStore((s) => s.user);
 
     const logoSrc = isDark ? logo_light : logo_dark;
@@ -74,13 +70,14 @@ export function AppSidebar() {
     };
 
     return (
-        <Sidebar
-            className={`transition-all duration-300 z-40 ${
-                sidebarOpen ? "w-64" : "w-20"
-            }`}
-            collapsible="none"
-        >
-            <SidebarContent className="flex flex-col h-full bg-gradient-to-b from-sidebar-background/95 to-sidebar-background/90 backdrop-blur-xl border-r border-sidebar-border/60 shadow-soft">
+        <>
+            <Sidebar
+                className={`transition-all duration-500 ease-in-out z-40 ${
+                    sidebarOpen ? "w-64" : "w-20"
+                } transform ${sidebarOpen ? "translate-x-0" : ""}`}
+                collapsible="none"
+            >
+            <SidebarContent className="flex flex-col h-full bg-gradient-to-b from-sidebar-background/95 to-sidebar-background/90 backdrop-blur-xl border-r border-sidebar-border/60 shadow-soft transition-all duration-500 ease-in-out">
                 {/* LOGO */}
                 <div className="flex items-center justify-center p-6 border-b border-sidebar-border/30">
                     <img
@@ -133,49 +130,20 @@ export function AppSidebar() {
                             {/* Compact Status Indicators */}
                             <div className="flex flex-col items-center gap-2">
                                 {/* Queue Status Indicator */}
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-surface-elevated/80 to-surface-elevated/60 border border-glass-border flex items-center justify-center cursor-help hover:scale-105 transition-transform">
-                                                <Users className="h-5 w-5 text-primary" />
-                                            </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent
-                                            side="right"
-                                            className="z-50 bg-popover/95 backdrop-blur-sm border border-border/50 shadow-xl"
-                                        >
-                                            <p className="font-semibold text-sm">
-                                                Filas de Atendimento
-                                            </p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                Clique no menu para ver detalhes
-                                            </p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                <button
+                                    onClick={() => setModalType("queues")}
+                                    className="w-10 h-10 rounded-lg bg-gradient-to-br from-surface-elevated/80 to-surface-elevated/60 border border-glass-border flex items-center justify-center cursor-pointer hover:scale-105 transition-all duration-300 hover:shadow-md hover:border-primary/40"
+                                >
+                                    <Users className="h-5 w-5 text-primary" />
+                                </button>
 
                                 {/* Pause Status Indicator */}
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-warning/10 to-warning/20 border border-warning/30 flex items-center justify-center cursor-help hover:scale-105 transition-transform">
-                                                <Clock className="h-5 w-5 text-warning" />
-                                            </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent
-                                            side="right"
-                                            className="z-50 bg-popover/95 backdrop-blur-sm border border-border/50 shadow-xl"
-                                        >
-                                            <p className="font-semibold text-sm">
-                                                Status da Equipe
-                                            </p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                Expanda o menu para ver quantos
-                                                colegas estão em pausa
-                                            </p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                <button
+                                    onClick={() => setModalType("pause")}
+                                    className="w-10 h-10 rounded-lg bg-gradient-to-br from-warning/10 to-warning/20 border border-warning/30 flex items-center justify-center cursor-pointer hover:scale-105 transition-all duration-300 hover:shadow-md hover:border-warning/50"
+                                >
+                                    <Clock className="h-5 w-5 text-warning" />
+                                </button>
                             </div>
                         </>
                     )}
@@ -368,5 +336,13 @@ export function AppSidebar() {
                 </div>
             </SidebarContent>
         </Sidebar>
+
+        {/* Agent Info Modal */}
+        <AgentInfoModal
+            open={modalType !== null}
+            onOpenChange={(open) => !open && setModalType(null)}
+            type={modalType || "queues"}
+        />
+        </>
     );
 }
