@@ -1,239 +1,73 @@
-# Agente PXTALK — Guia de Release & Deploy
+# Welcome to your Lovable project
 
-Este README descreve como versionar, como publicar e como operar o app em produção usando branches `dev` → `main` e PM2 no servidor.  
-Inclui também dicas de quando usar `patch` / `minor` / `major` (SemVer), scripts, e resolução de problemas comuns.
+## Project info
 
----
+**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
 
-## 📚 Sumário
+## How can I edit this code?
 
-- [Agente PXTALK — Guia de Release \& Deploy](#agente-pxtalk--guia-de-release--deploy)
-  - [📚 Sumário](#-sumário)
-  - [🔁 Fluxo de branches](#-fluxo-de-branches)
-  - [🔖 Versionamento (SemVer) — quando usar patch/minor/major](#-versionamento-semver--quando-usar-patchminormajor)
-    - [PATCH (`x.y.Z`)](#patch-xyz)
-    - [MINOR (`x.Y.z`)](#minor-xyz)
-    - [MAJOR (`X.y.z`)](#major-xyz)
-    - [Regra prática:](#regra-prática)
-  - [🚀 Passo a passo de release (local)](#-passo-a-passo-de-release-local)
-  - [🖥️ Deploy no servidor (primeira vez)](#️-deploy-no-servidor-primeira-vez)
-  - [🔁 Deploy no servidor (próximos)](#-deploy-no-servidor-próximos)
-  - [📜 Scripts úteis](#-scripts-úteis)
-  - [📁 Arquivos gerados no build](#-arquivos-gerados-no-build)
-  - [⚙️ PM2 — dicas rápidas](#️-pm2--dicas-rápidas)
-  - [🧯 Resolução de problemas](#-resolução-de-problemas)
+There are several ways of editing your application.
 
----
+**Use Lovable**
 
-## 🔁 Fluxo de branches
+Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
 
-- `dev`: desenvolvimento; integrações diárias.  
-- `main`: produção; só recebe PR/merge vindo de `dev` (ou hotfixes emergenciais).
+Changes made via Lovable will be committed automatically to this repo.
 
-**Recomendação:** faça PR de `dev` → `main` e aprove após revisão.  
-O bump de versão (`npm version`) pode ser feito na `main` após o merge, garantindo que a tag represente exatamente o que está em produção.
+**Use your preferred IDE**
 
----
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
-## 🔖 Versionamento (SemVer) — quando usar patch/minor/major
+The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-Usamos [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`
+Follow these steps:
 
-### PATCH (`x.y.Z`)
-Correções pequenas e compatíveis (bugfixes, ajustes de UI, melhorias sem alterar contrato de API).  
-Ex.: `1.4.3` → `1.4.4`
+```sh
+# Step 1: Clone the repository using the project's Git URL.
+git clone <YOUR_GIT_URL>
 
-### MINOR (`x.Y.z`)
-Novas funcionalidades compatíveis com versões anteriores.  
-Ex.: `1.4.3` → `1.5.0`
+# Step 2: Navigate to the project directory.
+cd <YOUR_PROJECT_NAME>
 
-### MAJOR (`X.y.z`)
-Mudanças incompatíveis (break changes), remoção/alteração de contratos, modificações estruturais.  
-Ex.: `1.5.0` → `2.0.0`
+# Step 3: Install the necessary dependencies.
+npm i
 
-### Regra prática:
-
-- Bugfix? → `npm version patch`
-- Feature sem quebrar nada? → `npm version minor`
-- Quebrou compatibilidade? → `npm version major`
-
----
-
-## 🚀 Passo a passo de release (local)
-
-```bash
-# Garanta que dev está atualizada
-git checkout dev
-git pull --ff-only
-
-# Abra PR de dev → main e faça o merge.
-# OU, se fizer local (menos recomendado):
-git checkout main
-git pull --ff-only
-git merge --no-ff dev
-
-# Bump de versão na main:
-npm version patch   # ou: npm version minor | npm version major
-
-# cria commit + tag vX.Y.Z automaticamente
-git push origin main --tags
+# Step 4: Start the development server with auto-reloading and an instant preview.
+npm run dev
 ```
 
-⚠️ **Importante**: não crie tags manualmente após `npm version`. Ela já criou a tag `vX.Y.Z`.
+**Edit a file directly in GitHub**
 
----
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
 
-## 🖥️ Deploy no servidor (primeira vez)
+**Use GitHub Codespaces**
 
-No servidor (já com Node/PM2 instalados):
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
 
-```bash
-cd /caminho/do/projeto
-git fetch --all --prune
-git checkout main
-git pull --ff-only
+## What technologies are used for this project?
 
-# Sobe com PM2 (usa o script de deploy)
-bash ./deploy.sh start
+This project is built with:
 
-pm2 status
-pm2 save           # para restaurar na reinicialização
-pm2 startup        # (uma vez, se ainda não configurado)
-```
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
 
-O `deploy.sh start` executa:
+## How can I deploy this project?
 
-1. `npm ci` (ou `npm install` se não houver lock)
-2. `npm run build` (gera artefatos e arquivos de versão)
-3. `pm2 start "npm run preview -- --port 9191 --host" --name agente-pxtalk`
+Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
-Se estiver atrás de Nginx/Proxy, usar `--host` é importante para aceitar conexões externas.
+## Can I connect a custom domain to my Lovable project?
 
----
+Yes, you can!
 
-## 🔁 Deploy no servidor (próximos)
+To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
-```bash
-cd /caminho/do/projeto
-git fetch --all --prune
-git checkout main
-git pull --ff-only
-
-bash ./deploy.sh restart   # rebuild + restart
-pm2 status
-pm2 logs agente-pxtalk --lines 50
-```
-
----
-
-## 📜 Scripts úteis
-
-No `package.json`, tem os atalhos:
-
-```json
-{
-	"scripts": {
-		"build": "vite build",
-		"prebuild": "node ./scripts/write-build-meta.ts",
-		"pm2:start": "./deploy.sh start",
-		"pm2:restart": "./deploy.sh restart",
-		"pm2:stop": "./deploy.sh stop",
-		"pm2:delete": "./deploy.sh delete",
-		"pm2:logs": "./deploy.sh logs",
-  	}
-}
-```
-
-O script `write-build-meta.ts` deve:
-
-- Gerar `public/version.json` com `{ buildId, builtAt, commit }`
-- Gerar `src/build-meta.ts` com:
-
-```ts
-export const BUILD_ID = "…";
-export const builtAt = "…";
-export const commit = "…";
-
-export const BUILD_META = {
-  buildId: BUILD_ID,
-  builtAt,
-  commit,
-  version: BUILD_ID,
-  buildTime: builtAt
-} as const;
-```
-
-Assim, o app consegue checar atualizações no ar.
-
----
-
-## 📁 Arquivos gerados no build
-
-Esses arquivos **não devem ir para o Git**:
-
-```
-public/version.json
-src/build-meta.ts
-```
-
-Adicione ao `.gitignore`:
-
-```
-/public/version.json
-/src/build-meta.ts
-```
-
-Se já estiverem versionados:
-
-```bash
-git rm --cached public/version.json src/build-meta.ts
-echo -e "/public/version.json\n/src/build-meta.ts" >> .gitignore
-git add .gitignore
-git commit -m "chore: ignore build meta files"
-git push
-```
-
----
-
-## ⚙️ PM2 — dicas rápidas
-
-```bash
-# Logs:
-npm run pm2:logs
-
-# Reiniciar:
-npm run pm2:restart
-
-# Limpar logs:
-pm2 flush agente-pxtalk
-
-# Salvar processos para iniciar com o SO:
-pm2 save
-pm2 startup   # uma vez
-```
-
----
-
-## 🧯 Resolução de problemas
-
-**“requestFullscreen só pode ser iniciado por gesto do usuário”**  
-Normal. Ignore se a UX estiver ok.
-
-**Versão não aparece/checa**  
-- Verifique se `prebuild` está rodando.  
-- Confirme que `version.json` está sendo servido.  
-- Adicione `?ts=\${Date.now()}` na URL para evitar cache.
-
-**Vite/esbuild vulnerável**  
-Atualize o Vite:
-
-```bash
-npm i -D vite@^7
-npm audit
-```
-
-**Deploy não reinicia**  
-Verifique `deploy.sh` e o nome do app no PM2 (`agente-pxtalk`).  
-Use `pm2 logs` para verificar erros.
-
----
+Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)

@@ -1,6 +1,4 @@
-# =========================
 # Logs
-# =========================
 logs
 *.log
 npm-debug.log*
@@ -9,50 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# =========================
-# Node & Package Managers
-# =========================
 node_modules
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-
-# =========================
-# Build outputs
-# =========================
 dist
 dist-ssr
-build
 *.local
 
-# =========================
-# Editor & OS
-# =========================
+# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
-Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# =========================
-# Test coverage
-# =========================
-coverage
-*.lcov
-
-# =========================
-# Storybook
-# =========================
-.out
-storybook-static
-
-# =========================
-# Next.js (se for usado)
-# =========================
-.next
-out
