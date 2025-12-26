@@ -23,16 +23,19 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Plus, Search, Pencil, Trash2, Users, Mail, Phone, Eye } from 'lucide-react';
-import { Customer } from '@/types';
+import { Progress } from '@/components/ui/progress';
+import { Plus, Search, Pencil, Trash2, Users, Mail, Phone, Eye, CreditCard, Wallet } from 'lucide-react';
+import { Customer, CustomerRating, calculateCreditLimit, getAvailableCredit } from '@/types';
+import { StarRating, getRatingLabel } from '@/components/ui/star-rating';
 import { toast } from 'sonner';
 
 const Customers = () => {
-  const { customers, orders, addCustomer, updateCustomer, deleteCustomer } = useStore();
+  const { customers, orders, addCustomer, updateCustomer, deleteCustomer, payCustomerCredit } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -40,6 +43,7 @@ const Customers = () => {
     cpf: '',
     address: '',
     notes: '',
+    rating: 3 as CustomerRating,
   });
 
   const filteredCustomers = customers.filter(
@@ -57,6 +61,7 @@ const Customers = () => {
       cpf: '',
       address: '',
       notes: '',
+      rating: 3,
     });
     setEditingCustomer(null);
   };
@@ -71,6 +76,7 @@ const Customers = () => {
         cpf: customer.cpf,
         address: customer.address,
         notes: customer.notes,
+        rating: customer.rating,
       });
     } else {
       resetForm();
@@ -89,6 +95,8 @@ const Customers = () => {
         ...formData,
         id: crypto.randomUUID(),
         totalPurchases: 0,
+        totalPaid: 0,
+        creditBalance: 0,
         createdAt: new Date(),
       });
       toast.success('Cliente cadastrado com sucesso!');
@@ -103,6 +111,24 @@ const Customers = () => {
       deleteCustomer(id);
       toast.success('Cliente excluído com sucesso!');
     }
+  };
+
+  const handlePayCredit = () => {
+    if (!viewingCustomer || !paymentAmount) return;
+    const amount = parseFloat(paymentAmount);
+    if (amount <= 0 || amount > viewingCustomer.creditBalance) {
+      toast.error('Valor inválido');
+      return;
+    }
+    payCustomerCredit(viewingCustomer.id, amount);
+    setPaymentAmount('');
+    // Atualizar a visualização
+    setViewingCustomer({
+      ...viewingCustomer,
+      creditBalance: Math.max(0, viewingCustomer.creditBalance - amount),
+      totalPaid: viewingCustomer.totalPaid + amount,
+    });
+    toast.success(`Pagamento de R$ ${amount.toFixed(2)} registrado!`);
   };
 
   const getCustomerOrders = (customerId: string) => {
@@ -142,6 +168,24 @@ const Customers = () => {
                   className="bg-input border-border"
                 />
               </div>
+              
+              <div>
+                <Label>Classificação do Cliente</Label>
+                <div className="flex items-center gap-3 mt-2">
+                  <StarRating
+                    rating={formData.rating}
+                    onChange={(rating) => setFormData({ ...formData, rating })}
+                    size="lg"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {getRatingLabel(formData.rating)}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Limite de crédito base: R$ {(formData.rating * 50).toFixed(2)}
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="email">Email</Label>
@@ -209,11 +253,14 @@ const Customers = () => {
 
       {/* Customer Details Dialog */}
       <Dialog open={!!viewingCustomer} onOpenChange={() => setViewingCustomer(null)}>
-        <DialogContent className="sm:max-w-[600px] bg-card border-border">
+        <DialogContent className="sm:max-w-[600px] bg-card border-border max-h-[90vh] overflow-y-auto">
           {viewingCustomer && (
             <>
               <DialogHeader>
-                <DialogTitle className="font-serif">{viewingCustomer.name}</DialogTitle>
+                <div className="flex items-center gap-3">
+                  <DialogTitle className="font-serif">{viewingCustomer.name}</DialogTitle>
+                  <StarRating rating={viewingCustomer.rating} readonly size="sm" />
+                </div>
               </DialogHeader>
               <div className="space-y-6 mt-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -235,17 +282,74 @@ const Customers = () => {
                   </div>
                 </div>
 
+                {/* Seção de Crédito */}
+                <div className="border-t border-border pt-4">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Linha de Crédito
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Limite Total</span>
+                      <span className="font-medium">R$ {calculateCreditLimit(viewingCustomer).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Saldo Devedor</span>
+                      <span className={`font-medium ${viewingCustomer.creditBalance > 0 ? 'text-destructive' : 'text-success'}`}>
+                        R$ {viewingCustomer.creditBalance.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Crédito Disponível</span>
+                      <span className="font-medium text-primary">R$ {getAvailableCredit(viewingCustomer).toFixed(2)}</span>
+                    </div>
+                    <Progress 
+                      value={(viewingCustomer.creditBalance / calculateCreditLimit(viewingCustomer)) * 100} 
+                      className="h-2"
+                    />
+                    
+                    {viewingCustomer.creditBalance > 0 && (
+                      <div className="flex gap-2 mt-3">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max={viewingCustomer.creditBalance}
+                          placeholder="Valor do pagamento"
+                          value={paymentAmount}
+                          onChange={(e) => setPaymentAmount(e.target.value)}
+                          className="bg-input border-border"
+                        />
+                        <Button 
+                          onClick={handlePayCredit}
+                          variant="secondary"
+                          className="shrink-0"
+                        >
+                          <Wallet className="h-4 w-4 mr-2" />
+                          Receber
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="border-t border-border pt-4">
                   <h4 className="font-semibold mb-3">Resumo de Compras</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Card className="p-4 bg-muted/50">
-                      <p className="text-sm text-muted-foreground">Total de Comandas</p>
-                      <p className="text-2xl font-bold">{getCustomerOrders(viewingCustomer.id).length}</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <Card className="p-3 bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Comandas</p>
+                      <p className="text-xl font-bold">{getCustomerOrders(viewingCustomer.id).length}</p>
                     </Card>
-                    <Card className="p-4 bg-muted/50">
-                      <p className="text-sm text-muted-foreground">Total Gasto</p>
-                      <p className="text-2xl font-bold text-primary">
+                    <Card className="p-3 bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Total Gasto</p>
+                      <p className="text-xl font-bold text-primary">
                         R$ {getCustomerTotal(viewingCustomer.id).toFixed(2)}
+                      </p>
+                    </Card>
+                    <Card className="p-3 bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Total Pago</p>
+                      <p className="text-xl font-bold text-success">
+                        R$ {viewingCustomer.totalPaid.toFixed(2)}
                       </p>
                     </Card>
                   </div>
@@ -282,9 +386,9 @@ const Customers = () => {
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               <TableHead>Cliente</TableHead>
+              <TableHead>Rating</TableHead>
               <TableHead>Contato</TableHead>
-              <TableHead>CPF</TableHead>
-              <TableHead className="text-right">Total Gasto</TableHead>
+              <TableHead className="text-right">Saldo Devedor</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -301,6 +405,10 @@ const Customers = () => {
                 <TableRow key={customer.id} className="border-border">
                   <TableCell>
                     <p className="font-medium text-foreground">{customer.name}</p>
+                    <p className="text-xs text-muted-foreground">{customer.cpf || '-'}</p>
+                  </TableCell>
+                  <TableCell>
+                    <StarRating rating={customer.rating} readonly size="sm" />
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
@@ -318,12 +426,9 @@ const Customers = () => {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {customer.cpf || '-'}
-                  </TableCell>
                   <TableCell className="text-right">
-                    <Badge variant="secondary">
-                      R$ {getCustomerTotal(customer.id).toFixed(2)}
+                    <Badge variant={customer.creditBalance > 0 ? 'destructive' : 'secondary'}>
+                      R$ {customer.creditBalance.toFixed(2)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -331,7 +436,10 @@ const Customers = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setViewingCustomer(customer)}
+                        onClick={() => {
+                          setViewingCustomer(customer);
+                          setPaymentAmount('');
+                        }}
                         className="hover:bg-muted"
                       >
                         <Eye className="h-4 w-4" />
