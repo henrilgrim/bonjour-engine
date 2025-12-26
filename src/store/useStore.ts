@@ -28,11 +28,16 @@ interface StoreState {
   addCustomer: (customer: Customer) => void;
   updateCustomer: (id: string, customer: Partial<Customer>) => void;
   deleteCustomer: (id: string) => void;
+  addCustomerCredit: (id: string, amount: number) => void;
+  payCustomerCredit: (id: string, amount: number) => void;
   
   // Orders
   addOrder: (order: Order) => void;
   updateOrder: (id: string, order: Partial<Order>) => void;
   deleteOrder: (id: string) => void;
+  addItemToOrder: (orderId: string, item: Order['items'][0]) => void;
+  removeItemFromOrder: (orderId: string, itemId: string) => void;
+  updateItemQuantity: (orderId: string, itemId: string, quantity: number) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -75,6 +80,20 @@ export const useStore = create<StoreState>()(
         customers: state.customers.map((c) => c.id === id ? { ...c, ...customer } : c)
       })),
       deleteCustomer: (id) => set((state) => ({ customers: state.customers.filter((c) => c.id !== id) })),
+      addCustomerCredit: (id, amount) => set((state) => ({
+        customers: state.customers.map((c) => 
+          c.id === id ? { ...c, creditBalance: c.creditBalance + amount } : c
+        )
+      })),
+      payCustomerCredit: (id, amount) => set((state) => ({
+        customers: state.customers.map((c) => 
+          c.id === id ? { 
+            ...c, 
+            creditBalance: Math.max(0, c.creditBalance - amount),
+            totalPaid: c.totalPaid + amount
+          } : c
+        )
+      })),
 
       // Orders
       addOrder: (order) => set((state) => ({ orders: [...state.orders, order] })),
@@ -82,6 +101,52 @@ export const useStore = create<StoreState>()(
         orders: state.orders.map((o) => o.id === id ? { ...o, ...order } : o)
       })),
       deleteOrder: (id) => set((state) => ({ orders: state.orders.filter((o) => o.id !== id) })),
+      addItemToOrder: (orderId, item) => set((state) => ({
+        orders: state.orders.map((o) => {
+          if (o.id !== orderId) return o;
+          const existingItem = o.items.find((i) => i.productId === item.productId);
+          if (existingItem) {
+            return {
+              ...o,
+              items: o.items.map((i) =>
+                i.productId === item.productId
+                  ? { ...i, quantity: i.quantity + item.quantity, total: (i.quantity + item.quantity) * i.unitPrice }
+                  : i
+              ),
+              total: o.total + item.total,
+            };
+          }
+          return {
+            ...o,
+            items: [...o.items, item],
+            total: o.total + item.total,
+          };
+        }),
+      })),
+      removeItemFromOrder: (orderId, itemId) => set((state) => ({
+        orders: state.orders.map((o) => {
+          if (o.id !== orderId) return o;
+          const item = o.items.find((i) => i.id === itemId);
+          return {
+            ...o,
+            items: o.items.filter((i) => i.id !== itemId),
+            total: o.total - (item?.total || 0),
+          };
+        }),
+      })),
+      updateItemQuantity: (orderId, itemId, quantity) => set((state) => ({
+        orders: state.orders.map((o) => {
+          if (o.id !== orderId) return o;
+          const updatedItems = o.items.map((i) =>
+            i.id === itemId ? { ...i, quantity, total: quantity * i.unitPrice } : i
+          );
+          return {
+            ...o,
+            items: updatedItems,
+            total: updatedItems.reduce((acc, i) => acc + i.total, 0),
+          };
+        }),
+      })),
     }),
     {
       name: 'tabacaria-storage',
